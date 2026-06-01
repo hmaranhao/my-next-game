@@ -1,0 +1,4 @@
+[
+  { "sourceGameId": "the-witcher-3", "targetGameId": "elden-ring", "weight": 1.0 },
+  { "sourceGameId": "hades", "targetGameId": "elden-ring", "weight": 0.5 }
+]

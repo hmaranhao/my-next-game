@@ -1,0 +1,38 @@
+[
+  {
+    "id": "the-witcher-3",
+    "name": "The Witcher 3: Wild Hunt",
+    "genre": "RPG",
+    "platform": "PC",
+    "year": 2015,
+    "rating": 9.2,
+    "tags": ["open-world", "story-rich"],
+    "price": 29.99,
+    "publisher": "CD Projekt",
+    "raw": {}
+  },
+  {
+    "id": "hades",
+    "name": "Hades",
+    "genre": "Action",
+    "platform": "PC",
+    "year": 2020,
+    "rating": 9.0,
+    "tags": ["roguelike", "indie"],
+    "price": 24.99,
+    "publisher": "Supergiant Games",
+    "raw": {}
+  },
+  {
+    "id": "elden-ring",
+    "name": "Elden Ring",
+    "genre": "RPG",
+    "platform": "PC",
+    "year": 2022,
+    "rating": 9.5,
+    "tags": ["soulslike", "open-world"],
+    "price": 59.99,
+    "publisher": "Bandai Namco",
+    "raw": {}
+  }
+]
