@@ -13,7 +13,7 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "data:download": "python3 scripts/download-kaggle-data.py",
+    "data:download": "PATH=\"$HOME/.local/bin:$PATH\" python3 scripts/download-kaggle-data.py",
     "data:setup": "pip install -r scripts/requirements-data.txt"
   },
   "dependencies": {

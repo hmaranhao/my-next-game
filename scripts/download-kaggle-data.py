@@ -48,9 +48,9 @@ def pick_column(columns: list[str], candidates: list[str]) -> str | None:
 
 def normalize_games(df) -> list[dict]:
     columns = list(df.columns)
-    col_name = pick_column(columns, ["name", "title", "game", "game_name"])
-    col_genre = pick_column(columns, ["genre", "genres", "category"])
-    col_platform = pick_column(columns, ["platform", "platforms"])
+    col_name = pick_column(columns, ["gamename", "game_name", "name", "title", "game"])
+    col_genre = pick_column(columns, ["genre", "genres", "category", "review"])
+    col_platform = pick_column(columns, ["console", "platform", "platforms"])
     col_year = pick_column(columns, ["year", "release_year", "release date"])
     col_rating = pick_column(columns, ["rating", "score", "user_score", "metascore"])
     col_tags = pick_column(columns, ["tags", "tag"])
@@ -107,7 +107,11 @@ def normalize_games(df) -> list[dict]:
                 "platform": str(row[col_platform]) if col_platform and str(row[col_platform]) != "nan" else None,
                 "year": year,
                 "rating": rating,
-                "tags": parse_tags(row[col_tags]) if col_tags else [],
+                "tags": (
+                    parse_tags(row[col_tags])
+                    if col_tags
+                    else ([str(row[col_genre])] if col_genre and str(row[col_genre]) != "nan" else [])
+                ),
                 "price": price,
                 "publisher": str(row[col_publisher]) if col_publisher and str(row[col_publisher]) != "nan" else None,
                 "raw": raw,
@@ -117,15 +121,19 @@ def normalize_games(df) -> list[dict]:
 
 
 def build_co_occurrence_pairs(games: list[dict], max_pairs: int = 50_000) -> list[dict]:
-    """Proxy co-occurrence from shared genre/tags (until Steam play history trains the model)."""
+    """Proxy co-occurrence from shared genre/tags/platform (until Steam play history trains the model)."""
     by_genre: dict[str, list[str]] = {}
     by_tag: dict[str, list[str]] = {}
+    by_platform: dict[str, list[str]] = {}
 
     for g in games:
         gid = g["id"]
         genre = g.get("genre")
         if genre:
             by_genre.setdefault(genre, []).append(gid)
+        platform = g.get("platform")
+        if platform:
+            by_platform.setdefault(platform, []).append(gid)
         for tag in g.get("tags") or []:
             by_tag.setdefault(tag.lower(), []).append(gid)
 
@@ -145,6 +153,8 @@ def build_co_occurrence_pairs(games: list[dict], max_pairs: int = 50_000) -> lis
 
     for ids in by_genre.values():
         add_pairs(ids, 1.0)
+    for ids in by_platform.values():
+        add_pairs(ids, 0.75)
     for ids in by_tag.values():
         add_pairs(ids, 0.5)
 
