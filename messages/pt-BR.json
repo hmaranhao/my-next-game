@@ -1,0 +1,14 @@
+{
+  "app": {
+    "title": "Meu próximo game",
+    "tagline": "Descubra o próximo jogo perfeito para o seu perfil Steam"
+  },
+  "home": {
+    "cta": "Ver meu próximo game",
+    "steamPlaceholder": "Steam ID ou URL do perfil",
+    "manualFallback": "Perfil privado? Preencher manualmente"
+  },
+  "locale": {
+    "label": "Idioma"
+  }
+}

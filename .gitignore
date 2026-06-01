@@ -1,0 +1,37 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# next.js
+/.next/
+/out/
+
+# env
+.env
+.env*.local
+
+# data
+/data/*.json
+!data/.gitkeep
+
+# debug
+npm-debug.log*
+.pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# testing
+/playwright-report/
+/test-results/
+
+# misc
+.DS_Store
+.vercel
