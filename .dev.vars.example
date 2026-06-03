@@ -1,0 +1,12 @@
+# Copie para .dev.vars (local preview: npm run preview)
+NEXTJS_ENV=development
+
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/my_next_game
+STEAM_API_KEY=
+
+# true = amostra em data/samples/ (recomendado até subir catálogo no R2)
+USE_SAMPLE_GAME_DATA=true
+
+VECTOR_DISTANCE=cosine
+VECTOR_TOP_K=1000
+VECTOR_FINAL_PICK_TOP_N=10
