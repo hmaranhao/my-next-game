@@ -8,6 +8,8 @@ const globalForPrisma = globalThis as unknown as {
 type HyperdriveBinding = { connectionString: string };
 
 function resolveConnectionString(): string {
+  const fallback = process.env.DATABASE_URL;
+
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { getCloudflareContext } = require("@opennextjs/cloudflare") as {
@@ -19,14 +21,12 @@ function resolveConnectionString(): string {
       return hyperdrive.connectionString;
     }
   } catch {
-    // next dev / build Node — sem binding Cloudflare
+    // build / next dev sem bindings
   }
 
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is not set");
-  }
-  return url;
+  if (fallback) return fallback;
+
+  throw new Error("DATABASE_URL is not set");
 }
 
 function createPrismaClient(): PrismaClient {

@@ -76,6 +76,55 @@ export function isGameAlreadyPlayed(
   return false;
 }
 
+type ScoredDraft = {
+  gameId: string;
+  game: NormalizedGame;
+  gameVector: Float32Array;
+  vectorScore: number;
+  popularityScore: number;
+  score: number;
+  distance: number;
+};
+
+/** Keep only the best `limit` items — O(n·k) memory instead of O(n). */
+function pushTopK(heap: ScoredDraft[], entry: ScoredDraft, limit: number): void {
+  if (heap.length < limit) {
+    heap.push(entry);
+    if (heap.length === limit) {
+      heap.sort((a, b) => a.score - b.score);
+    }
+    return;
+  }
+  if (entry.score > heap[0].score) {
+    heap[0] = entry;
+    heap.sort((a, b) => a.score - b.score);
+  }
+}
+
+function finalizeCandidates(
+  drafts: ScoredDraft[],
+  queryVector: Float32Array,
+): ScoredCandidate[] {
+  return drafts
+    .sort((a, b) => b.score - a.score)
+    .map((d) => {
+      const combinedVector = new Float32Array(queryVector.length);
+      for (let i = 0; i < queryVector.length; i++) {
+        combinedVector[i] = (queryVector[i] + d.gameVector[i]) / 2;
+      }
+      return {
+        gameId: d.gameId,
+        game: d.game,
+        vector: combinedVector,
+        gameVector: d.gameVector,
+        vectorScore: d.vectorScore,
+        popularityScore: d.popularityScore,
+        score: d.score,
+        distance: d.distance,
+      };
+    });
+}
+
 export function findTopGameCandidates(
   profile: NormalizedUserProfile,
   games: NormalizedGame[],
@@ -86,6 +135,7 @@ export function findTopGameCandidates(
   contextMeta: ReturnType<typeof buildEmbeddingContext>;
   profileTags: string[];
   topK: number;
+  scoredCount: number;
 } {
   const ctx = buildEmbeddingContext(games);
   const lookup = buildGameLookup(games);
@@ -100,35 +150,39 @@ export function findTopGameCandidates(
   const playedNames = buildPlayedNameSet(profile);
   const playedAppIds = buildPlayedAppIdSet(profile);
 
-  const scored: ScoredCandidate[] = [];
+  const topK = getCandidateTopK();
+  const heap: ScoredDraft[] = [];
+  let scoredCount = 0;
 
   for (const game of games) {
     if (isGameAlreadyPlayed(game, playedNames, playedAppIds)) continue;
 
     const gameVector = encodeGameVector(game, ctx);
-    const { score: vectorScore, distance } = scoreVectors(queryVector, gameVector, metric);
+    const { score: vectorScore, distance } = scoreVectors(
+      queryVector,
+      gameVector,
+      metric,
+    );
     const popularity = getGamePopularity(game);
     const rankScore = blendRankScore(vectorScore, popularity);
-    const combinedVector = new Float32Array(queryVector.length);
-    for (let i = 0; i < queryVector.length; i++) {
-      combinedVector[i] = (queryVector[i] + gameVector[i]) / 2;
-    }
 
-    scored.push({
-      gameId: game.id,
-      game,
-      vector: combinedVector,
-      gameVector,
-      vectorScore,
-      popularityScore: popularity,
-      score: rankScore,
-      distance,
-    });
+    pushTopK(
+      heap,
+      {
+        gameId: game.id,
+        game,
+        gameVector,
+        vectorScore,
+        popularityScore: popularity,
+        score: rankScore,
+        distance,
+      },
+      topK,
+    );
+    scoredCount += 1;
   }
 
-  scored.sort((a, b) => b.score - a.score);
-  const topK = getCandidateTopK();
-  const candidates = scored.slice(0, topK);
+  const candidates = finalizeCandidates(heap, queryVector);
 
-  return { queryVector, candidates, contextMeta: ctx, profileTags, topK };
+  return { queryVector, candidates, contextMeta: ctx, profileTags, topK, scoredCount };
 }

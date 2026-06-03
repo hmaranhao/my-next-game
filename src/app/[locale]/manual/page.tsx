@@ -22,8 +22,8 @@ export default async function ManualPage({ params }: Props) {
         </Link>
         <LocaleSwitcher />
       </header>
-      <main className="flex-1 px-4 pb-12">
-        <p className="text-center text-muted-foreground">{t("subtitle")}</p>
+      <main className="flex flex-1 flex-col items-center px-4 pb-12 pt-4 sm:px-6">
+        <p className="max-w-md text-center text-muted-foreground">{t("subtitle")}</p>
         <ManualProfileForm />
       </main>
     </div>

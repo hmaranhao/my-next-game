@@ -4,9 +4,13 @@ NEXTJS_ENV=development
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/my_next_game
 STEAM_API_KEY=
 
+# Se localConnectionString no wrangler.jsonc não bastar (preview/build):
+# CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://...
+
 # true = amostra em data/samples/ (recomendado até subir catálogo no R2)
-USE_SAMPLE_GAME_DATA=true
+USE_SAMPLE_GAME_DATA=false
 
 VECTOR_DISTANCE=cosine
-VECTOR_TOP_K=1000
+VECTOR_TOP_K=150
+VECTOR_PERSIST_TOP_N=20
 VECTOR_FINAL_PICK_TOP_N=10

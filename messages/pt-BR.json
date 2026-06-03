@@ -18,6 +18,8 @@
     "rankPercent": "{percent}% ranking",
     "matchPercent": "{percent}% match",
     "candidatesHybridHint": "Percentuais finais (vetor + IA). O jogo escolhido pode não ser o #1 do ranking.",
+    "candidatesSampleHint": "Modo demo na nuvem: catálogo com apenas {total} jogos (amostra). Para ~122k jogos, configure R2 — veja README.",
+    "candidatesLimitedPool": "Mostrando {shown} de {target} candidatos (biblioteca ou catálogo limitado).",
     "candidatesCount": "{count} jogos indexados em {ms}ms",
     "searchingCandidates": "Buscando candidatos similares…",
     "searchAnother": "Buscar outro perfil"
@@ -44,6 +46,7 @@
   "lgpd": {
     "title": "Consentimento de dados (LGPD)",
     "body": "Para personalizar a recomendação, coletamos dados públicos do seu perfil Steam (jogos, tempo de jogo, país e gêneros inferidos). Os dados são usados apenas para esta finalidade e você pode usar o formulário manual se preferir não compartilhar o perfil Steam.",
+    "manualBody": "Para personalizar a recomendação, usamos as preferências que você informar neste formulário (gêneros, jogos favoritos, tempo de jogo e país). Os dados são usados apenas para esta finalidade.",
     "accept": "Li e aceito",
     "decline": "Cancelar",
     "policyVersion": "Política v{version}"
@@ -53,7 +56,9 @@
     "profilePrivate": "Seu perfil Steam é privado. Use o formulário manual.",
     "notFound": "Perfil Steam não encontrado.",
     "generic": "Não foi possível carregar o perfil. Tente novamente.",
-    "consentRequired": "Aceite o consentimento LGPD para continuar."
+    "consentRequired": "Aceite o consentimento LGPD para continuar.",
+    "candidatesUnavailable": "Servidor ocupado ao buscar candidatos. Tente de novo em instantes.",
+    "invalidApiResponse": "Resposta inválida da API de recomendações."
   },
   "manual": {
     "title": "Perfil manual",

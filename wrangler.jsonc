@@ -1,46 +1,44 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "my-next-game",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2025-03-01",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public"
-  ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "my-next-game"
-    }
-  ],
-  "vars": {
-    "VECTOR_DISTANCE": "cosine",
-    "VECTOR_TOP_K": "1000",
-    "VECTOR_FINAL_PICK_TOP_N": "10",
-    "USE_SAMPLE_GAME_DATA": "true"
-  },
-  // Postgres externo (Neon, Supabase, etc.) — crie com:
-  // npx wrangler hyperdrive create my-next-game-db --connection-string="$DATABASE_URL"
-  // Depois substitua o id abaixo e remova DATABASE_URL dos secrets se usar só Hyperdrive.
-  // "hyperdrive": [
-  //   {
-  //     "binding": "HYPERDRIVE",
-  //     "id": "<HYPERDRIVE_CONFIG_ID>"
-  //   }
-  // ],
-  // Catálogo reduzido (~8k jogos) — gere com npm run data:cloud && faça upload para o bucket.
-  // "r2_buckets": [
-  //   {
-  //     "binding": "GAME_DATA",
-  //     "bucket_name": "my-next-game-data"
-  //   },
-  //   {
-  //     "binding": "NEXT_INC_CACHE_R2_BUCKET",
-  //     "bucket_name": "my-next-game-cache"
-  //   }
-  // ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "my-next-game",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2025-03-01",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "my-next-game"
+		}
+	],
+	"vars": {
+		"VECTOR_DISTANCE": "cosine",
+		"VECTOR_TOP_K": "150",
+		"VECTOR_PERSIST_TOP_N": "20",
+		"VECTOR_FINAL_PICK_TOP_N": "10",
+		"USE_SAMPLE_GAME_DATA": "true"
+	},
+	// Postgres externo (Neon, Supabase, etc.) — crie com:
+	// npx wrangler hyperdrive create my-next-game-db --connection-string="$DATABASE_URL"
+	// Depois substitua o id abaixo e remova DATABASE_URL dos secrets se usar só Hyperdrive.
+	// "hyperdrive": [
+	// 	{
+	// 		"binding": "HYPERDRIVE",
+	// 		"id": "<HYPERDRIVE_CONFIG_ID>",
+	// 		"localConnectionString": "postgresql://postgres:postgres@localhost:5433/my_next_game"
+	// 	}
+	// ],
+	// Catálogo reduzido (~2k jogos) — gere com npm run data:cloud && faça upload para o bucket.
+	// "r2_buckets": [
+	// 	{
+	// 		"binding": "GAME_DATA",
+	// 		"bucket_name": "my-next-game-data"
+	// 	}
+	// ]
 }

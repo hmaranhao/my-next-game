@@ -71,77 +71,119 @@ Submódulo de [pos-ia-my-projects](https://github.com/hmaranhao/pos-ia-my-projec
 
 ## Deploy na Cloudflare
 
-Stack: [OpenNext](https://opennext.js.org/cloudflare) + Workers + Postgres externo (pgvector) via [Hyperdrive](https://developers.cloudflare.com/hyperdrive/).
+### O banco fica dentro da Cloudflare?
 
-### Pré-requisitos
+**Não.** O app roda na Cloudflare (Workers), mas o **PostgreSQL fica em outro serviço** — porque precisamos de **pgvector**, e o banco nativo da Cloudflare (D1) é SQLite, sem essa extensão.
 
-1. Conta Cloudflare + `npx wrangler login`
-2. Postgres com extensão **pgvector** (ex.: [Neon](https://neon.tech), Supabase, Railway)
-3. `STEAM_API_KEY` como secret
-
-### 1. Banco de dados
-
-```bash
-# Aplique migrations no Postgres de produção
-DATABASE_URL="postgres://..." npm run db:migrate
+```
+┌─────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
+│  Navegador  │────▶│  Cloudflare Workers  │────▶│  Postgres (Neon…)   │
+│  TF.js ML   │     │  app my-next-game    │     │  perfis, sessões,   │
+└─────────────┘     │         │            │     │  embeddings pgvector│
+                    │         ▼            │     └─────────────────────┘
+                    │  Hyperdrive (proxy)  │              ▲
+                    │  pool de conexões    │──────────────┘
+                    └──────────────────────┘
 ```
 
-Crie Hyperdrive apontando para o mesmo banco:
+| O quê | Onde fica |
+|-------|-----------|
+| Site + APIs | **Cloudflare Workers** |
+| Conexão rápida ao banco | **Hyperdrive** (na Cloudflare, mas *não* é o banco) |
+| Dados (tabelas, vetores) | **Neon / Supabase / Railway** (Postgres externo) |
+| Catálogo de jogos (JSON) | **R2** ou amostra em memória (opcional) |
+
+**Dev local:** Docker Postgres (`docker compose up -d`).  
+**Produção:** Neon (grátis) + Hyperdrive.
+
+---
+
+### Passo a passo (recomendado: Neon)
+
+#### 1. Postgres na Neon (5 min)
+
+1. Crie conta em [neon.tech](https://neon.tech)
+2. **New project** → região perto de você (ex.: `aws-us-east-1`)
+3. No dashboard, copie a **connection string** (formato `postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`)
+4. No SQL Editor da Neon, rode uma vez (se a migration não criar sozinha):
+
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS vector;
+   ```
+
+#### 2. Migrations + Hyperdrive
 
 ```bash
-npx wrangler hyperdrive create my-next-game-db \
-  --connection-string="postgres://USER:PASS@HOST:5432/DB"
+# Node 22+ (Wrangler 4 exige)
+nvm use    # usa .nvmrc → 22
 
-# Copie o id retornado para wrangler.jsonc → hyperdrive[0].id
-# Descomente os blocos hyperdrive e r2_buckets em wrangler.jsonc
+export DATABASE_URL="postgresql://..."   # string da Neon
+
+chmod +x scripts/setup-cloud-db.sh
+./scripts/setup-cloud-db.sh              # migrations + cria Hyperdrive
 ```
 
-### 2. Variáveis locais (preview)
+O script imprime o **Hyperdrive ID**. Cole em `wrangler.jsonc` — descomente:
+
+```jsonc
+"hyperdrive": [
+  {
+    "binding": "HYPERDRIVE",
+    "id": "COLE-O-UUID-AQUI"
+  }
+],
+```
+
+> Com Hyperdrive configurado, **não** precisa de `DATABASE_URL` como secret no Worker — o app usa `env.HYPERDRIVE.connectionString`.
+
+#### 3. Login Cloudflare + secrets
+
+```bash
+npx wrangler login
+npx wrangler secret put STEAM_API_KEY
+```
+
+#### 4. Deploy
+
+```bash
+npm run deploy:cf
+```
+
+URL: `https://my-next-game.<sua-conta>.workers.dev`
+
+#### 5. Preview local (opcional)
 
 ```bash
 cp .dev.vars.example .dev.vars
-# Edite DATABASE_URL, STEAM_API_KEY, USE_SAMPLE_GAME_DATA=true
+# DATABASE_URL = Neon (para preview sem Hyperdrive) ou use wrangler preview
+npm run preview:cf
 ```
 
-Secrets em produção:
+---
 
-```bash
-npx wrangler secret put STEAM_API_KEY
-npx wrangler secret put DATABASE_URL   # se não usar Hyperdrive
-```
+### Catálogo de jogos na nuvem
 
-### 3. Catálogo de jogos na nuvem
-
-O dataset completo (~239 MB) **não cabe** na memória do Worker. Opções:
+O dataset completo (~239 MB) **não cabe** na memória do Worker.
 
 | Modo | Config |
 |------|--------|
 | Demo rápido | `USE_SAMPLE_GAME_DATA=true` (padrão no `wrangler.jsonc`) |
-| Catálogo ~8k jogos | `npm run data:cloud` → upload R2 (veja script) + binding `GAME_DATA` |
+| ~2k jogos | `npm run data:cloud` + upload R2 + binding `GAME_DATA` + `USE_SAMPLE_GAME_DATA=false` |
 
 ```bash
-npm run data:download
-npm run data:cloud
+npm run data:download && npm run data:cloud
 npx wrangler r2 bucket create my-next-game-data
 npx wrangler r2 object put my-next-game-data/games.cloud.json --file=data/games.cloud.json
 npx wrangler r2 object put my-next-game-data/co-occurrence.cloud.json --file=data/co-occurrence.cloud.json
-# wrangler.jsonc: USE_SAMPLE_GAME_DATA=false + r2_buckets GAME_DATA
+# wrangler.jsonc: USE_SAMPLE_GAME_DATA=false + descomente r2_buckets GAME_DATA
 ```
-
-### 4. Build e deploy
-
-```bash
-npm run preview:cf   # testa no runtime Workers localmente
-npm run deploy:cf      # publica em *.workers.dev
-```
-
-**CI (Cloudflare Workers Builds):** build = `npm run deploy:cf` ou `opennextjs-cloudflare build`, deploy = `opennextjs-cloudflare deploy`.
 
 ### Scripts Cloudflare
 
 | Comando | Descrição |
 |---------|-----------|
-| `npm run preview:cf` | Build OpenNext + preview local (Wrangler) |
-| `npm run deploy:cf` | Build + deploy para Cloudflare |
-| `npm run data:cloud` | Gera `games.cloud.json` (~8k jogos) para R2 |
-| `npm run cf-typegen` | Tipos TypeScript dos bindings |
+| `./scripts/setup-cloud-db.sh` | Migrations + cria Hyperdrive |
+| `npm run preview:cf` | Build + preview no runtime Workers |
+| `npm run deploy:cf` | Build + deploy |
+| `npm run data:cloud` | Catálogo reduzido para R2 |
+| `npm run cf-typegen` | Tipos dos bindings Cloudflare |

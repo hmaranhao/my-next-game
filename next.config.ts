@@ -26,4 +26,7 @@ const nextConfig: NextConfig = {
 
 export default withNextIntl(nextConfig);
 
-initOpenNextCloudflareForDev();
+/** Só em `next dev` — evita erro de Hyperdrive durante `next build` / deploy. */
+if (process.env.NODE_ENV === "development") {
+  initOpenNextCloudflareForDev();
+}

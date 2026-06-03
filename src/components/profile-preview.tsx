@@ -55,6 +55,7 @@ export function ProfilePreview({
     Record<string, string | number>
   >({});
   const [candidatePoolSize, setCandidatePoolSize] = useState(1000);
+  const [useSampleCatalog, setUseSampleCatalog] = useState(false);
   const [finalPickTopN, setFinalPickTopN] = useState(10);
   const [pickedGameId, setPickedGameId] = useState<string | null>(null);
   const [mlError, setMlError] = useState<string | null>(null);
@@ -85,8 +86,24 @@ export function ProfilePreview({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ snapshotId }),
         });
-        const json = await res.json();
-        if (cancelled || !json.ok) return;
+        const raw = await res.text();
+        let json: Record<string, unknown>;
+        try {
+          json = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          if (!cancelled) {
+            setMlError(
+              res.ok
+                ? t("errors.invalidApiResponse")
+                : t("errors.candidatesUnavailable"),
+            );
+          }
+          return;
+        }
+        if (cancelled || !json.ok) {
+          if (!cancelled && typeof json.message === "string") setMlError(json.message);
+          return;
+        }
 
         const list = json.candidates as CandidatePreview[];
         const pickTopN = (json.finalPickTopN as number) ?? 10;
@@ -94,6 +111,7 @@ export function ProfilePreview({
         setCandidates(list.slice(0, pickTopN));
         setElapsedMs(json.elapsedMs as number);
         setCandidatePoolSize((json.candidatePoolSize as number) ?? list.length);
+        setUseSampleCatalog(Boolean(json.useSampleCatalog));
 
         const training = await fetchTrainingPayload();
         if (cancelled) return;
@@ -200,7 +218,7 @@ export function ProfilePreview({
   }, [snapshotId, profile]);
 
   return (
-    <div className="mt-10 w-full max-w-2xl space-y-4 text-left">
+    <div className="mx-auto mt-10 w-full max-w-2xl space-y-4 text-left">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-medium text-[var(--gamer-accent)]">
           {t("home.profileReady")}
@@ -251,6 +269,19 @@ export function ProfilePreview({
             {elapsedMs != null ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("home.candidatesCount", { count: candidatePoolSize, ms: elapsedMs })}
+              </p>
+            ) : null}
+            {useSampleCatalog ? (
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                {t("home.candidatesSampleHint", { total: candidatePoolSize })}
+              </p>
+            ) : null}
+            {candidates.length > 0 && candidates.length < finalPickTopN ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("home.candidatesLimitedPool", {
+                  shown: candidates.length,
+                  target: finalPickTopN,
+                })}
               </p>
             ) : null}
             {mlComplete ? (

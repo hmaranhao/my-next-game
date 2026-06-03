@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadGamesDataset } from "@/lib/game-data";
-import { getFinalPickTopN } from "@/lib/embedding/config";
+import { getFinalPickTopN, getApiResponseTopN, getPersistTopN } from "@/lib/embedding/config";
 import { getDistanceMetric } from "@/lib/embedding/distance";
 import { findTopGameCandidates } from "@/lib/embedding/search";
 import {
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     const metric = body.metric ?? getDistanceMetric();
     const { games } = await loadGamesDataset();
-    const { queryVector, candidates, contextMeta, profileTags, topK } =
+    const { queryVector, candidates, contextMeta, profileTags, scoredCount } =
       findTopGameCandidates(snapshot.profile, games, metric);
     const ctx = buildEmbeddingContext(games);
     const lookup = buildGameLookup(games);
@@ -49,13 +49,18 @@ export async function POST(request: Request) {
       lookup,
     );
 
-    const sessionId = await persistCandidateSession(snapshot.id, candidates);
+    const persistN = getPersistTopN();
+    const responseN = getApiResponseTopN();
+    const toPersist = candidates.slice(0, persistN);
+    const toRespond = candidates.slice(0, responseN);
+
+    const sessionId = await persistCandidateSession(snapshot.id, toPersist);
 
     const result: CandidateSearchResult = {
       sessionId,
       metric,
       queryVector: vectorToArray(queryVector),
-      candidates: candidates.map((c, idx) => ({
+      candidates: toRespond.map((c, idx) => ({
         rank: idx + 1,
         gameId: c.gameId,
         name: c.game.name,
@@ -76,7 +81,10 @@ export async function POST(request: Request) {
       ok: true,
       ...result,
       playedGameWeightedVector,
-      candidatePoolSize: topK,
+      catalogGameCount: games.length,
+      candidatePoolSize: scoredCount,
+      rankedCandidateCount: candidates.length,
+      useSampleCatalog: process.env.USE_SAMPLE_GAME_DATA === "true",
       finalPickTopN: getFinalPickTopN(),
       profileTags,
       embedding: {

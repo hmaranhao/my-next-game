@@ -43,3 +43,6 @@ next-env.d.ts
 # misc
 .DS_Store
 .vercel
+
+# cloudflare local state (cache, r2 preview, sqlite)
+.wrangler/

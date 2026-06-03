@@ -18,6 +18,8 @@
     "rankPercent": "{percent}% ranking",
     "matchPercent": "{percent}% match",
     "candidatesHybridHint": "Final scores (vector + ML). The picked game may differ from #1 in the list.",
+    "candidatesSampleHint": "Cloud demo mode: catalog has only {total} games (sample). For ~122k games, set up R2 — see README.",
+    "candidatesLimitedPool": "Showing {shown} of {target} candidates (limited catalog or library overlap).",
     "candidatesCount": "{count} games indexed in {ms}ms",
     "searchingCandidates": "Finding similar candidates…",
     "searchAnother": "Search another profile"
@@ -44,6 +46,7 @@
   "lgpd": {
     "title": "Data consent (LGPD)",
     "body": "To personalize recommendations, we collect public data from your Steam profile (games, playtime, country, and inferred genres). Data is used only for this purpose. You may use the manual form instead if you prefer not to share your Steam profile.",
+    "manualBody": "To personalize recommendations, we use the preferences you provide in this form (genres, favorite games, playtime, and country). Data is used only for this purpose.",
     "accept": "I have read and accept",
     "decline": "Cancel",
     "policyVersion": "Policy v{version}"
@@ -53,7 +56,9 @@
     "profilePrivate": "Your Steam profile is private. Use the manual form.",
     "notFound": "Steam profile not found.",
     "generic": "Could not load profile. Please try again.",
-    "consentRequired": "Accept LGPD consent to continue."
+    "consentRequired": "Accept LGPD consent to continue.",
+    "candidatesUnavailable": "Server was busy finding candidates. Please try again shortly.",
+    "invalidApiResponse": "Invalid response from the recommendations API."
   },
   "manual": {
     "title": "Manual profile",

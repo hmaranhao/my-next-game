@@ -54,6 +54,19 @@ export function getCandidateTopK(): number {
   return Math.min(raw, 5000);
 }
 
+/** How many ranked candidates to persist in Postgres (Workers: keep low). */
+export function getPersistTopN(): number {
+  const raw = Number.parseInt(process.env.VECTOR_PERSIST_TOP_N ?? "25", 10);
+  const topK = getCandidateTopK();
+  if (!Number.isFinite(raw) || raw < 1) return Math.min(25, topK);
+  return Math.min(raw, topK);
+}
+
+/** How many candidates the API returns to the client (with vectors). */
+export function getApiResponseTopN(): number {
+  return getFinalPickTopN();
+}
+
 /** TF.js + escolha final só entre os N melhores do ranking vetorial (default 10). */
 export function getFinalPickTopN(): number {
   const raw = Number.parseInt(process.env.VECTOR_FINAL_PICK_TOP_N ?? "10", 10);

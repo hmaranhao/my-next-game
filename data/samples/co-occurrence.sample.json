@@ -1,4 +1,13 @@
 [
   { "sourceGameId": "292030", "targetGameId": "1245620", "weight": 1.0 },
-  { "sourceGameId": "1145360", "targetGameId": "1245620", "weight": 0.85 }
+  { "sourceGameId": "292030", "targetGameId": "1091500", "weight": 0.95 },
+  { "sourceGameId": "1145360", "targetGameId": "1245620", "weight": 0.85 },
+  { "sourceGameId": "1145360", "targetGameId": "367520", "weight": 0.8 },
+  { "sourceGameId": "1086940", "targetGameId": "292030", "weight": 0.9 },
+  { "sourceGameId": "1086940", "targetGameId": "1245620", "weight": 0.88 },
+  { "sourceGameId": "413150", "targetGameId": "105600", "weight": 0.85 },
+  { "sourceGameId": "620", "targetGameId": "367520", "weight": 0.7 },
+  { "sourceGameId": "730", "targetGameId": "570", "weight": 0.9 },
+  { "sourceGameId": "1174180", "targetGameId": "271590", "weight": 0.85 },
+  { "sourceGameId": "1593500", "targetGameId": "1245620", "weight": 0.82 }
 ]

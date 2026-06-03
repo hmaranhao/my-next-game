@@ -10,6 +10,7 @@ import type { NormalizedUserProfile, ProfileApiError } from "@/types/profile";
 
 export function ManualProfileForm() {
   const t = useTranslations("manual");
+  const tLgpd = useTranslations("lgpd");
   const tErr = useTranslations("errors");
   const locale = useLocale();
 
@@ -197,17 +198,30 @@ export function ManualProfileForm() {
       </div>
 
       {consentOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6">
-            <p className="text-sm text-muted-foreground">
-              LGPD v{LGPD_POLICY_VERSION} — consent for manual profile data.
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="manual-lgpd-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
+            <h2 id="manual-lgpd-title" className="text-lg font-semibold">
+              {tLgpd("title")}
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">{tLgpd("manualBody")}</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {tLgpd("policyVersion", { version: LGPD_POLICY_VERSION })}
             </p>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
               <Button className="gamer-cta flex-1" onClick={submitWithConsent}>
-                OK
+                {tLgpd("accept")}
               </Button>
-              <Button variant="outline" onClick={() => setConsentOpen(false)}>
-                Cancel
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setConsentOpen(false)}
+              >
+                {tLgpd("decline")}
               </Button>
             </div>
           </div>

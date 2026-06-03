@@ -11,6 +11,16 @@ type GameDataBucket = {
   get: (key: string) => Promise<{ text: () => Promise<string> } | null>;
 };
 
+type DatasetCache = {
+  games: NormalizedGame[];
+  pairs: CoOccurrencePair[];
+  manifest: GamesDatasetManifest | null;
+};
+
+const globalCache = globalThis as typeof globalThis & {
+  __myNextGameDataset?: DatasetCache;
+};
+
 async function loadFromR2(): Promise<{
   games: NormalizedGame[];
   pairs: CoOccurrencePair[];
@@ -38,11 +48,7 @@ async function loadFromR2(): Promise<{
   }
 }
 
-async function loadFromFilesystem(): Promise<{
-  games: NormalizedGame[];
-  pairs: CoOccurrencePair[];
-  manifest: GamesDatasetManifest | null;
-} | null> {
+async function loadFromFilesystem(): Promise<DatasetCache | null> {
   try {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
@@ -66,32 +72,34 @@ async function loadFromFilesystem(): Promise<{
   }
 }
 
-export async function loadGamesDataset(): Promise<{
-  games: NormalizedGame[];
-  pairs: CoOccurrencePair[];
-  manifest: GamesDatasetManifest | null;
-}> {
+export async function loadGamesDataset(): Promise<DatasetCache> {
+  if (globalCache.__myNextGameDataset) {
+    return globalCache.__myNextGameDataset;
+  }
+
+  let result: DatasetCache;
+
   if (process.env.USE_SAMPLE_GAME_DATA === "true") {
-    return {
+    result = {
       games: sampleGames as NormalizedGame[],
       pairs: samplePairs as CoOccurrencePair[],
       manifest: null,
     };
+  } else {
+    const fromR2 = await loadFromR2();
+    if (fromR2) {
+      result = { ...fromR2, manifest: null };
+    } else {
+      const fromDisk = await loadFromFilesystem();
+      result =
+        fromDisk ?? {
+          games: sampleGames as NormalizedGame[],
+          pairs: samplePairs as CoOccurrencePair[],
+          manifest: null,
+        };
+    }
   }
 
-  const fromR2 = await loadFromR2();
-  if (fromR2) {
-    return { ...fromR2, manifest: null };
-  }
-
-  const fromDisk = await loadFromFilesystem();
-  if (fromDisk) {
-    return fromDisk;
-  }
-
-  return {
-    games: sampleGames as NormalizedGame[],
-    pairs: samplePairs as CoOccurrencePair[],
-    manifest: null,
-  };
+  globalCache.__myNextGameDataset = result;
+  return result;
 }

@@ -8,7 +8,17 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
-const MAX_GAMES = Number.parseInt(process.env.CLOUD_GAME_LIMIT ?? "8000", 10);
+const MAX_GAMES = Number.parseInt(process.env.CLOUD_GAME_LIMIT ?? "2000", 10);
+
+function slimForCloud(game) {
+  return {
+    ...game,
+    screenshots: [],
+    shortDescription: game.shortDescription
+      ? String(game.shortDescription).slice(0, 280)
+      : game.shortDescription,
+  };
+}
 
 function popularity(game) {
   const raw = game.raw ?? {};
@@ -25,7 +35,7 @@ if (!fs.existsSync(gamesPath)) {
 
 const games = JSON.parse(fs.readFileSync(gamesPath, "utf-8"));
 const sorted = [...games].sort((a, b) => popularity(b) - popularity(a));
-const trimmed = sorted.slice(0, MAX_GAMES);
+const trimmed = sorted.slice(0, MAX_GAMES).map(slimForCloud);
 const ids = new Set(trimmed.map((g) => g.id));
 
 let pairs = [];
