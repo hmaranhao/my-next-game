@@ -14,6 +14,16 @@ export type WorkerCandidate = {
   platform: string | null;
   rating: number | null;
   gameVector: number[];
+  vectorScore: number;
+};
+
+export type TfPrediction = {
+  gameId: string;
+  name: string;
+  genre: string | null;
+  platform: string | null;
+  rating: number | null;
+  tfScore: number;
 };
 
 export type WorkerRecommendation = {
@@ -35,8 +45,7 @@ export type WorkerMessage =
     }
   | {
       type: typeof WORKER_EVENTS.complete;
-      recommendation: WorkerRecommendation;
-      ranked: Array<WorkerRecommendation & { score: number }>;
+      predictions: TfPrediction[];
     }
   | { type: typeof WORKER_EVENTS.error; message: string };
 
@@ -68,6 +77,8 @@ export function createRecommendationWorker(): Worker {
 
 export function runRecommendationInWorker(options: {
   profileVector: number[];
+  playedGameWeightedVector?: number[] | null;
+  playedGameVectors?: number[][];
   candidates: WorkerCandidate[];
   trainingRows: TrainingRow[];
   retrain?: boolean;
@@ -86,6 +97,8 @@ export function runRecommendationInWorker(options: {
   worker.postMessage({
     action: "trainAndRecommend",
     profileVector: options.profileVector,
+    playedGameWeightedVector: options.playedGameWeightedVector ?? null,
+    playedGameVectors: options.playedGameVectors ?? [],
     candidates: options.candidates,
     trainingRows: options.trainingRows,
     retrain: options.retrain ?? false,

@@ -16,7 +16,8 @@
     "data:download": "PATH=\"$HOME/.local/bin:$PATH\" python3 scripts/download-kaggle-data.py",
     "data:setup": "pip install -r scripts/requirements-data.txt",
     "test:embedding": "node scripts/test-embedding.mjs",
-    "test:ml": "node scripts/test-ml-features.mjs"
+    "test:ml": "node scripts/test-ml-features.mjs",
+    "test:playtime": "node scripts/test-playtime-weights.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

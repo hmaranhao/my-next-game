@@ -10,6 +10,16 @@ const events = {
   error: "error",
 };
 
+function averageVectors(list) {
+  if (!list?.length) return null;
+  const dim = list[0].length;
+  const out = new Array(dim).fill(0);
+  for (const v of list) {
+    for (let i = 0; i < dim; i++) out[i] += v[i];
+  }
+  return out.map((x) => x / list.length);
+}
+
 /** @param {Array<{input: number[], label: number}>} rows */
 async function configureAndTrain(rows) {
   if (!rows.length) {
@@ -64,19 +74,24 @@ async function configureAndTrain(rows) {
   return model;
 }
 
+/** Prefer server-computed playtime-weighted library vector for TF.js user taste. */
+function resolveUserVector(
+  profileVector,
+  playedGameWeightedVector,
+  playedGameVectors,
+) {
+  if (playedGameWeightedVector?.length) return playedGameWeightedVector;
+  return averageVectors(playedGameVectors) ?? profileVector;
+}
+
 /** @param {tf.LayersModel} model */
-function predictCandidates(model, profileVector, candidates) {
-  const inputs = candidates.map((c) => [...profileVector, ...c.gameVector]);
+function scoreCandidates(model, userVector, candidates) {
+  const inputs = candidates.map((c) => [...userVector, ...c.gameVector]);
   const inputTensor = tf.tensor2d(inputs);
   const predictions = model.predict(inputTensor);
   const scores = predictions.dataSync();
   inputTensor.dispose();
   predictions.dispose();
-
-  let bestIdx = 0;
-  for (let i = 1; i < scores.length; i++) {
-    if (scores[i] > scores[bestIdx]) bestIdx = i;
-  }
 
   return candidates.map((c, i) => ({
     gameId: c.gameId,
@@ -84,12 +99,12 @@ function predictCandidates(model, profileVector, candidates) {
     genre: c.genre,
     platform: c.platform,
     rating: c.rating,
-    score: scores[i],
-  })).sort((a, b) => b.score - a.score);
+    tfScore: scores[i],
+  }));
 }
 
-async function loadOrTrain(rows, skipTrain) {
-  if (!skipTrain) {
+async function loadOrTrain(rows, retrain) {
+  if (!retrain) {
     try {
       const loaded = await tf.loadLayersModel(STORAGE_KEY);
       postMessage({ type: events.progress, progress: 15 });
@@ -104,7 +119,14 @@ async function loadOrTrain(rows, skipTrain) {
 }
 
 async function trainAndRecommend(data) {
-  const { profileVector, candidates, trainingRows, retrain } = data;
+  const {
+    profileVector,
+    playedGameWeightedVector,
+    playedGameVectors,
+    candidates,
+    trainingRows,
+    retrain,
+  } = data;
 
   if (!profileVector?.length || !candidates?.length) {
     throw new Error("Missing profileVector or candidates");
@@ -113,21 +135,16 @@ async function trainAndRecommend(data) {
   const model = await loadOrTrain(trainingRows ?? [], Boolean(retrain));
   postMessage({ type: events.progress, progress: 92 });
 
-  const ranked = predictCandidates(model, profileVector, candidates);
-  const top = ranked[0];
-  const matchPercent = Math.round(Math.min(100, Math.max(0, top.score * 100)));
+  const userVector = resolveUserVector(
+    profileVector,
+    playedGameWeightedVector,
+    playedGameVectors,
+  );
+  const scored = scoreCandidates(model, userVector, candidates);
 
   postMessage({
     type: events.complete,
-    recommendation: {
-      gameId: top.gameId,
-      name: top.name,
-      genre: top.genre,
-      platform: top.platform,
-      rating: top.rating,
-      matchPercent,
-    },
-    ranked: ranked.slice(0, 5),
+    predictions: scored,
   });
   postMessage({ type: events.progress, progress: 100 });
 }

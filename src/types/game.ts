@@ -1,6 +1,8 @@
-/** Normalized game record from Kaggle video-games dataset */
+/** Normalized game record from Kaggle Steam games dataset */
 export type NormalizedGame = {
+  /** Stable id — Steam AppID as string */
   id: string;
+  steamAppId: number | null;
   name: string;
   genre: string | null;
   platform: string | null;
@@ -9,7 +11,17 @@ export type NormalizedGame = {
   tags: string[];
   price: number | null;
   publisher: string | null;
-  raw: Record<string, string | number | null>;
+  /** 0–1 — higher = more owners / positive reviews */
+  popularityScore?: number | null;
+  positiveReviews?: number | null;
+  recommendations?: number | null;
+  estimatedOwners?: string | null;
+  estimatedOwnersMid?: number | null;
+  shortDescription?: string | null;
+  headerImage?: string | null;
+  screenshots?: string[];
+  developers?: string[];
+  raw: Record<string, string | number | null | string[]>;
 };
 
 /** Collaborative pair for TF.js training: liked X → also liked Y */
@@ -28,3 +40,8 @@ export type GamesDatasetManifest = {
   gamesPath: string;
   pairsPath: string;
 };
+
+export function steamStoreUrl(game: Pick<NormalizedGame, "steamAppId" | "id">): string {
+  const id = game.steamAppId ?? Number.parseInt(game.id, 10);
+  return `https://store.steampowered.com/app/${id}`;
+}

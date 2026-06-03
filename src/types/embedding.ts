@@ -46,7 +46,11 @@ export type ScoredCandidate = {
   vector: Float32Array;
   /** Game-only slice for TF.js inference */
   gameVector: Float32Array;
+  /** Final rank score (vector + popularity blend) */
   score: number;
+  /** Raw vector similarity before popularity */
+  vectorScore: number;
+  popularityScore: number;
   distance: number;
 };
 
@@ -62,6 +66,8 @@ export type CandidateSearchResult = {
     platform: string | null;
     rating: number | null;
     score: number;
+    vectorScore?: number;
+    popularityScore?: number;
     distance: number;
     gameVector: number[];
     metadata: import("@/types/game").NormalizedGame;

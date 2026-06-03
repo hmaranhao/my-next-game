@@ -1,21 +1,42 @@
 import type { NormalizedGame } from "@/types/game";
 import type { NormalizedUserProfile } from "@/types/profile";
+import { getProfileLibraryEntries } from "@/lib/embedding/played-games";
 
 export type ExplanationPayload = {
   explanationKey: string;
   explanationValues: Record<string, string | number>;
 };
 
+const LOW_MATCH_THRESHOLD = 15;
+
 /** Template-based explanation for i18n (pt-BR / en-US). */
 export function buildRecommendationExplanation(
   profile: NormalizedUserProfile,
   game: NormalizedGame,
   matchPercent: number,
+  candidatePoolSize = 1000,
 ): ExplanationPayload {
+  const pool = candidatePoolSize;
+
+  if (matchPercent < LOW_MATCH_THRESHOLD) {
+    return {
+      explanationKey: "recommendation.explainLowMatch",
+      explanationValues: {
+        game: game.name,
+        match: matchPercent,
+        pool,
+      },
+    };
+  }
+
   const sharedGenre = profile.inferredGenres.find(
     (g) => g.toLowerCase() === (game.genre ?? "").toLowerCase(),
   );
-  const topPlayed = profile.topGames[0]?.name ?? profile.playedGameNames[0] ?? "";
+  const topPlayed =
+    getProfileLibraryEntries(profile)[0]?.name ??
+    profile.topGames[0]?.name ??
+    profile.playedGameNames[0] ??
+    "";
 
   if (sharedGenre && topPlayed) {
     return {
@@ -56,6 +77,7 @@ export function buildRecommendationExplanation(
     explanationValues: {
       game: game.name,
       match: matchPercent,
+      pool,
     },
   };
 }

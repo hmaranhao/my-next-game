@@ -13,8 +13,21 @@
     "genres": "Inferred genres",
     "nextStep": "Final pick below",
     "candidatesTitle": "Top candidates (vector search)",
+    "candidatesFinalPool": "Final pick will be one of these top {count}",
+    "chosenBadge": "picked",
+    "rankPercent": "{percent}% ranking",
+    "matchPercent": "{percent}% match",
+    "candidatesHybridHint": "Final scores (vector + ML). The picked game may differ from #1 in the list.",
     "candidatesCount": "{count} games indexed in {ms}ms",
-    "searchingCandidates": "Finding similar candidates…"
+    "searchingCandidates": "Finding similar candidates…",
+    "searchAnother": "Search another profile"
+  },
+  "game": {
+    "free": "Free",
+    "reviews": "{positive} positive reviews · {recommendations} Steam recommendations",
+    "owners": "Estimated owners: {range}",
+    "developer": "Developer",
+    "viewOnSteam": "View on Steam"
   },
   "recommendation": {
     "title": "Your next game",
@@ -25,7 +38,8 @@
     "explainGenreAndHistory": "Matches your taste for {genre} and what you enjoyed in {played}. {match}% match.",
     "explainGenre": "Aligned with {genre}, a genre you play often. {match}% match.",
     "explainPlatform": "A strong pick for {platform} based on your profile. {match}% match.",
-    "explainGeneric": "{game} ranked best among 50 candidates ({match}% match)."
+    "explainGeneric": "{game} ranked best among {pool} indexed candidates ({match}% match).",
+    "explainLowMatch": "Low compatibility ({match}%). None of the {pool} candidates fit well — {game} was the closest match."
   },
   "lgpd": {
     "title": "Data consent (LGPD)",

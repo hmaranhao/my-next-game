@@ -13,8 +13,21 @@
     "genres": "Gêneros inferidos",
     "nextStep": "Recomendação final abaixo",
     "candidatesTitle": "Top candidatos (busca vetorial)",
+    "candidatesFinalPool": "A escolha final será um destes {count} jogos",
+    "chosenBadge": "escolhido",
+    "rankPercent": "{percent}% ranking",
+    "matchPercent": "{percent}% match",
+    "candidatesHybridHint": "Percentuais finais (vetor + IA). O jogo escolhido pode não ser o #1 do ranking.",
     "candidatesCount": "{count} jogos indexados em {ms}ms",
-    "searchingCandidates": "Buscando candidatos similares…"
+    "searchingCandidates": "Buscando candidatos similares…",
+    "searchAnother": "Buscar outro perfil"
+  },
+  "game": {
+    "free": "Grátis",
+    "reviews": "{positive} avaliações positivas · {recommendations} recomendações Steam",
+    "owners": "Estimativa de proprietários: {range}",
+    "developer": "Desenvolvedor",
+    "viewOnSteam": "Ver na Steam"
   },
   "recommendation": {
     "title": "Seu próximo game",
@@ -25,7 +38,8 @@
     "explainGenreAndHistory": "Combina com seu gosto por {genre} e lembra o que você curtiu em {played}. Match de {match}%.",
     "explainGenre": "Alinhado ao gênero {genre} que você mais joga. Match de {match}%.",
     "explainPlatform": "Boa opção para {platform}, com perfil parecido com o seu. Match de {match}%.",
-    "explainGeneric": "{game} foi o melhor entre os 50 candidatos (match {match}%)."
+    "explainGeneric": "{game} foi o melhor entre {pool} candidatos indexados (match {match}%).",
+    "explainLowMatch": "Compatibilidade baixa ({match}%). Nenhum dos {pool} candidatos se encaixou bem — {game} foi o menos distante."
   },
   "lgpd": {
     "title": "Consentimento de dados (LGPD)",

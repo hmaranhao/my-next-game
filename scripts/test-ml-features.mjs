@@ -1,55 +1,58 @@
-/** Unit tests for ML feature helpers (mirrors src/lib/ml/training-features.ts) */
+/** Unit tests for hybrid ranking (mirrors src/lib/ml/rank-candidates.ts) */
 
-function buildPairTrainingRows(pairs, gameVectors, negativeRatio = 1) {
-  const rows = [];
-  const gameIds = Object.keys(gameVectors);
-
-  for (const pair of pairs) {
-    const source = gameVectors[pair.sourceGameId];
-    const target = gameVectors[pair.targetGameId];
-    if (!source || !target) continue;
-
-    rows.push({ input: [...source, ...target], label: 1 });
-
-    for (let n = 0; n < negativeRatio; n++) {
-      const randomId = gameIds[Math.floor(Math.random() * gameIds.length)];
-      if (!randomId || randomId === pair.targetGameId) continue;
-      const random = gameVectors[randomId];
-      if (!random) continue;
-      rows.push({ input: [...source, ...random], label: 0 });
-    }
-  }
-
-  return rows;
+function minMaxNormalize(values) {
+  if (!values.length) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+  if (span < 1e-9) return values.map(() => 0.5);
+  return values.map((v) => (v - min) / span);
 }
 
-function pickBestCandidate(profileVector, candidates) {
-  if (!candidates.length) return null;
-  const best = candidates.reduce((a, b) => (b.score > a.score ? b : a));
-  return {
-    gameId: best.gameId,
-    matchPercent: Math.round(Math.min(100, Math.max(0, best.score * 100))),
-  };
+const RANK_W = 0.72;
+const TF_W = 0.28;
+
+function scoreAllHybrid(candidates, tfById) {
+  const tfRaw = candidates.map((c) => tfById.get(c.gameId) ?? 0);
+  const tfNorm = minMaxNormalize(tfRaw);
+  return candidates.map((c, i) => {
+    const rank = c.rankScore ?? c.vectorScore;
+    const combined = RANK_W * rank + TF_W * tfNorm[i];
+    return {
+      ...c,
+      matchPercent: Math.round(combined * 100),
+      combinedScore: combined,
+    };
+  });
 }
 
-const vec = (seed) => Array.from({ length: 128 }, (_, i) => (seed + i) * 0.001);
+function pickHybrid(candidates, tfById) {
+  const scored = scoreAllHybrid(candidates, tfById);
+  return scored.reduce((a, b) => (b.combinedScore > a.combinedScore ? b : a));
+}
 
-const gameVectors = { a: vec(1), b: vec(2), c: vec(3) };
-const pairs = [
-  { sourceGameId: "a", targetGameId: "b", weight: 1 },
-  { sourceGameId: "a", targetGameId: "c", weight: 0.5 },
+const candidates = [
+  { gameId: "rpg-a", name: "RPG A", vectorScore: 0.85, rankScore: 0.92 },
+  { gameId: "fps-b", name: "FPS B", vectorScore: 0.35, rankScore: 0.4 },
+  { gameId: "rpg-c", name: "RPG C", vectorScore: 0.8, rankScore: 0.88 },
 ];
 
-const rows = buildPairTrainingRows(pairs, gameVectors, 0);
-if (rows.length !== 2) throw new Error("expected 2 positive rows");
-if (rows[0].label !== 1) throw new Error("expected positive label");
-if (rows[0].input.length !== 256) throw new Error("expected 256-dim input");
-
-const best = pickBestCandidate(vec(10), [
-  { gameId: "x", gameVector: vec(1), score: 0.4 },
-  { gameId: "y", gameVector: vec(2), score: 0.91 },
+const tf = new Map([
+  ["rpg-a", 0.02],
+  ["fps-b", 0.99],
+  ["rpg-c", 0.01],
 ]);
-if (best?.gameId !== "y") throw new Error("wrong best candidate");
-if (best?.matchPercent !== 91) throw new Error("wrong match percent");
+
+const scored = scoreAllHybrid(candidates, tf);
+const pick = pickHybrid(candidates, tf);
+
+const pickInScored = scored.find((s) => s.gameId === pick.gameId);
+if (pick.matchPercent !== pickInScored.matchPercent) {
+  throw new Error("pick percent must match scored entry");
+}
+
+if (pick.gameId !== "rpg-a") {
+  throw new Error(`expected rpg-a, got ${pick.gameId}`);
+}
 
 console.log("ml feature tests OK");

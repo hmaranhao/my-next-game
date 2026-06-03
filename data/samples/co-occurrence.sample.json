@@ -1,4 +1,4 @@
 [
-  { "sourceGameId": "the-witcher-3", "targetGameId": "elden-ring", "weight": 1.0 },
-  { "sourceGameId": "hades", "targetGameId": "elden-ring", "weight": 0.5 }
+  { "sourceGameId": "292030", "targetGameId": "1245620", "weight": 1.0 },
+  { "sourceGameId": "1145360", "targetGameId": "1245620", "weight": 0.85 }
 ]

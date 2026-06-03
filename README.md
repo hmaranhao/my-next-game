@@ -1,6 +1,6 @@
 # My Next Game
 
-PWA que recomenda o **próximo jogo** com base no perfil **Steam** (público) ou formulário manual, usando TensorFlow.js no browser, pgvector e dataset Kaggle [video-games](https://www.kaggle.com/datasets/mohamedhanyyy/video-games).
+PWA que recomenda o **próximo jogo** com base no perfil **Steam** (público) ou formulário manual, usando TensorFlow.js no browser, pgvector e dataset Kaggle [Steam Games](https://www.kaggle.com/datasets/fronkongames/steam-games-dataset).
 
 **Nome exibido:** Meu próximo game · **Locales:** pt-BR, en-US
 

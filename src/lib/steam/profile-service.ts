@@ -36,6 +36,10 @@ export async function buildSteamProfile(
     (a, b) => (b.playtime_forever ?? 0) - (a.playtime_forever ?? 0),
   );
   const topGames = sorted.slice(0, 10).map(mapGameEntry);
+  const libraryGames = sorted
+    .filter((g) => (g.playtime_forever ?? 0) > 0)
+    .slice(0, 50)
+    .map(mapGameEntry);
   const recentGames = recent.map(mapGameEntry);
   const playedAppIds = owned.map((g) => g.appid);
 
@@ -85,6 +89,7 @@ export async function buildSteamProfile(
     isPublic: true,
     inferredGenres: [...genreSet],
     topGames,
+    libraryGames,
     recentGames,
     playedAppIds,
     playedGameNames: [],
@@ -99,6 +104,25 @@ export function buildManualProfile(
   const favoriteGenres = input.favoriteGenres.map((g) => g.trim()).filter(Boolean);
   const favoriteGames = input.favoriteGames.map((g) => g.trim()).filter(Boolean);
   const playedGameNames = input.playedGames.map((g) => g.trim()).filter(Boolean);
+  const totalMinutes = (input.approximatePlaytimeHours ?? 0) * 60;
+
+  const libraryGames = favoriteGames.map((name, i) => {
+    const share = favoriteGames.length > 0 ? 1 / Math.pow(2, i) : 1;
+    const weightSum = favoriteGames.reduce((s, _, idx) => s + 1 / Math.pow(2, idx), 0);
+    const playtimeMinutes =
+      totalMinutes > 0
+        ? Math.round((totalMinutes * share) / weightSum)
+        : Math.max(60, (favoriteGames.length - i) * 60);
+
+    return {
+      appId: -(i + 1),
+      name,
+      playtimeMinutes,
+      playtimeHours: Math.round((playtimeMinutes / 60) * 10) / 10,
+      lastPlayedAt: null,
+      iconUrl: null,
+    };
+  });
 
   return {
     source: "MANUAL",
@@ -111,18 +135,12 @@ export function buildManualProfile(
     accountAgeYears: input.ageRange ? parseAgeRangeMidpoint(input.ageRange) : null,
     isPublic: false,
     inferredGenres: favoriteGenres,
-    topGames: favoriteGames.map((name, i) => ({
-      appId: -(i + 1),
-      name,
-      playtimeMinutes: 0,
-      playtimeHours: 0,
-      lastPlayedAt: null,
-      iconUrl: null,
-    })),
+    topGames: libraryGames.slice(0, 10),
+    libraryGames,
     recentGames: [],
     playedAppIds: [],
     playedGameNames,
-    totalPlaytimeMinutes: (input.approximatePlaytimeHours ?? 0) * 60,
+    totalPlaytimeMinutes: totalMinutes,
     achievementSample: null,
     rawMeta: { ageRange: input.ageRange ?? null },
   };

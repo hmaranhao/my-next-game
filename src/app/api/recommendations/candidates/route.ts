@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadGamesDataset } from "@/lib/game-data";
+import { getFinalPickTopN } from "@/lib/embedding/config";
 import { getDistanceMetric } from "@/lib/embedding/distance";
 import { findTopGameCandidates } from "@/lib/embedding/search";
 import {
@@ -7,6 +8,9 @@ import {
   persistCandidateSession,
 } from "@/lib/embedding/persist-candidates";
 import { vectorToArray } from "@/lib/embedding/encode";
+import { buildEmbeddingContext } from "@/lib/embedding/context";
+import { encodePlayedLibraryWeightedVector } from "@/lib/embedding/played-games";
+import { buildGameLookup } from "@/lib/game-lookup";
 import type { CandidateSearchResult } from "@/types/embedding";
 
 export async function POST(request: Request) {
@@ -34,10 +38,15 @@ export async function POST(request: Request) {
 
     const metric = body.metric ?? getDistanceMetric();
     const { games } = await loadGamesDataset();
-    const { queryVector, candidates, contextMeta } = findTopGameCandidates(
+    const { queryVector, candidates, contextMeta, profileTags, topK } =
+      findTopGameCandidates(snapshot.profile, games, metric);
+    const ctx = buildEmbeddingContext(games);
+    const lookup = buildGameLookup(games);
+    const playedGameWeightedVector = encodePlayedLibraryWeightedVector(
       snapshot.profile,
       games,
-      metric,
+      ctx,
+      lookup,
     );
 
     const sessionId = await persistCandidateSession(snapshot.id, candidates);
@@ -54,6 +63,8 @@ export async function POST(request: Request) {
         platform: c.game.platform,
         rating: c.game.rating,
         score: Math.round(c.score * 1000) / 1000,
+        vectorScore: Math.round(c.vectorScore * 1000) / 1000,
+        popularityScore: Math.round(c.popularityScore * 1000) / 1000,
         distance: Math.round(c.distance * 1000) / 1000,
         gameVector: vectorToArray(c.gameVector),
         metadata: c.game,
@@ -64,6 +75,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       ...result,
+      playedGameWeightedVector,
+      candidatePoolSize: topK,
+      finalPickTopN: getFinalPickTopN(),
+      profileTags,
       embedding: {
         dimension: contextMeta.dimension,
         layout: "128-dim shared genre/platform/tag/publisher + continuous",

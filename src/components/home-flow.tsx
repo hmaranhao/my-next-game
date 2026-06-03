@@ -74,7 +74,18 @@ export function HomeFlow({ labels }: Props) {
   }
 
   if (profile && snapshotId) {
-    return <ProfilePreview profile={profile} snapshotId={snapshotId} />;
+    return (
+      <ProfilePreview
+        profile={profile}
+        snapshotId={snapshotId}
+        onReset={() => {
+          setProfile(null);
+          setSnapshotId(null);
+          setSteamInput("");
+          setError(null);
+        }}
+      />
+    );
   }
 
   return (

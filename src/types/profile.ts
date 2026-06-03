@@ -21,6 +21,8 @@ export type NormalizedUserProfile = {
   inferredGenres: string[];
   topGames: ProfileGameEntry[];
   recentGames: ProfileGameEntry[];
+  /** Top owned games by playtime — used for weighted taste modeling (up to ~50). */
+  libraryGames?: ProfileGameEntry[];
   playedAppIds: number[];
   /** Manual-only: game names user says they already played */
   playedGameNames: string[];

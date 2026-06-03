@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { LGPD_POLICY_VERSION } from "@/lib/lgpd/constants";
+import { ProfilePreview } from "@/components/profile-preview";
 import type { NormalizedUserProfile, ProfileApiError } from "@/types/profile";
 
 export function ManualProfileForm() {
@@ -23,6 +24,7 @@ export function ManualProfileForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<NormalizedUserProfile | null>(null);
+  const [snapshotId, setSnapshotId] = useState<string | null>(null);
 
   function splitLines(text: string) {
     return text
@@ -75,6 +77,7 @@ export function ManualProfileForm() {
         return;
       }
       setProfile(json.profile);
+      setSnapshotId(json.snapshotId);
     } catch {
       setError(tErr("generic"));
     } finally {
@@ -85,17 +88,24 @@ export function ManualProfileForm() {
   const inputClass =
     "h-11 w-full rounded-lg border border-border bg-card/80 px-4 text-sm outline-none focus:ring-2 focus:ring-[var(--gamer-accent)]";
 
-  if (profile) {
+  if (profile && snapshotId) {
     return (
-      <div className="mx-auto mt-8 w-full max-w-md rounded-xl border border-border bg-card/80 p-6">
-        <p className="font-semibold">{profile.displayName}</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {profile.inferredGenres.join(" · ")}
-        </p>
-        <Link href="/" className="mt-4 inline-block text-sm text-[var(--gamer-accent)]">
-          ← {t("back")}
-        </Link>
-      </div>
+      <ProfilePreview
+        profile={profile}
+        snapshotId={snapshotId}
+        onReset={() => {
+          setProfile(null);
+          setSnapshotId(null);
+          setDisplayName("");
+          setFavoriteGenres("");
+          setFavoriteGames("");
+          setPlayedGames("");
+          setPlaytime("");
+          setAgeRange("");
+          setCountry("");
+          setError(null);
+        }}
+      />
     );
   }
 
