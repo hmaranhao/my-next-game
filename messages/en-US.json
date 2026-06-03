@@ -11,7 +11,10 @@
     "profileReady": "Profile loaded",
     "gamesPlayed": "{count} games in library",
     "genres": "Inferred genres",
-    "nextStep": "Coming soon: AI recommendation"
+    "nextStep": "Coming soon: AI recommendation",
+    "candidatesTitle": "Top candidates (vector search)",
+    "candidatesCount": "{count} games indexed in {ms}ms",
+    "searchingCandidates": "Finding similar candidates…"
   },
   "lgpd": {
     "title": "Data consent (LGPD)",

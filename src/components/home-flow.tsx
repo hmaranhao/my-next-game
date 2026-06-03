@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import type { NormalizedUserProfile, ProfileApiError } from "@/types/profile";
 import { LGPD_POLICY_VERSION } from "@/lib/lgpd/constants";
+import { ProfilePreview } from "@/components/profile-preview";
 
 type Props = {
   labels: {
@@ -23,6 +24,7 @@ export function HomeFlow({ labels }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<NormalizedUserProfile | null>(null);
+  const [snapshotId, setSnapshotId] = useState<string | null>(null);
 
   async function requestConsentAndFetch() {
     if (!steamInput.trim()) return;
@@ -34,6 +36,7 @@ export function HomeFlow({ labels }: Props) {
     setLoading(true);
     setError(null);
     setProfile(null);
+    setSnapshotId(null);
 
     try {
       const consentRes = await fetch("/api/consent", {
@@ -62,6 +65,7 @@ export function HomeFlow({ labels }: Props) {
       }
 
       setProfile(profileJson.profile);
+      setSnapshotId(profileJson.snapshotId);
     } catch {
       setError(t("errors.generic"));
     } finally {
@@ -69,52 +73,8 @@ export function HomeFlow({ labels }: Props) {
     }
   }
 
-  if (profile) {
-    return (
-      <div className="mt-10 w-full max-w-md space-y-4 text-left">
-        <p className="text-center text-sm font-medium text-[var(--gamer-accent)]">
-          {t("home.profileReady")}
-        </p>
-        <div className="rounded-xl border border-border bg-card/80 p-4">
-          <div className="flex items-center gap-3">
-            {profile.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={profile.avatarUrl}
-                alt=""
-                className="size-12 rounded-full"
-              />
-            ) : null}
-            <div>
-              <p className="font-semibold">{profile.displayName}</p>
-              <p className="text-xs text-muted-foreground">
-                {t("home.gamesPlayed", { count: profile.playedAppIds.length })}
-              </p>
-            </div>
-          </div>
-          {profile.inferredGenres.length > 0 ? (
-            <div className="mt-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("home.genres")}
-              </p>
-              <p className="mt-1 text-sm">{profile.inferredGenres.join(" · ")}</p>
-            </div>
-          ) : null}
-          {profile.topGames.length > 0 ? (
-            <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-              {profile.topGames.slice(0, 3).map((g) => (
-                <li key={g.appId}>
-                  {g.name} — {g.playtimeHours}h
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-        <p className="text-center text-xs text-muted-foreground">
-          {t("home.nextStep")}
-        </p>
-      </div>
-    );
+  if (profile && snapshotId) {
+    return <ProfilePreview profile={profile} snapshotId={snapshotId} />;
   }
 
   return (

@@ -1,0 +1,81 @@
+import { NextResponse } from "next/server";
+import { loadGamesDataset } from "@/lib/game-data";
+import { getDistanceMetric } from "@/lib/embedding/distance";
+import { findTopGameCandidates } from "@/lib/embedding/search";
+import {
+  loadProfileSnapshot,
+  persistCandidateSession,
+} from "@/lib/embedding/persist-candidates";
+import { vectorToArray } from "@/lib/embedding/encode";
+import type { CandidateSearchResult } from "@/types/embedding";
+
+export async function POST(request: Request) {
+  const started = Date.now();
+  try {
+    const body = (await request.json()) as {
+      snapshotId?: string;
+      metric?: "cosine" | "l2";
+    };
+
+    if (!body.snapshotId) {
+      return NextResponse.json(
+        { ok: false, message: "snapshotId is required" },
+        { status: 400 },
+      );
+    }
+
+    const snapshot = await loadProfileSnapshot(body.snapshotId);
+    if (!snapshot) {
+      return NextResponse.json(
+        { ok: false, message: "Profile snapshot not found" },
+        { status: 404 },
+      );
+    }
+
+    const metric = body.metric ?? getDistanceMetric();
+    const { games } = await loadGamesDataset();
+    const { queryVector, candidates, contextMeta } = findTopGameCandidates(
+      snapshot.profile,
+      games,
+      metric,
+    );
+
+    const sessionId = await persistCandidateSession(snapshot.id, candidates);
+
+    const result: CandidateSearchResult = {
+      sessionId,
+      metric,
+      queryVector: vectorToArray(queryVector),
+      candidates: candidates.map((c, idx) => ({
+        rank: idx + 1,
+        gameId: c.gameId,
+        name: c.game.name,
+        genre: c.game.genre,
+        platform: c.game.platform,
+        rating: c.game.rating,
+        score: Math.round(c.score * 1000) / 1000,
+        distance: Math.round(c.distance * 1000) / 1000,
+        metadata: c.game,
+      })),
+      elapsedMs: Date.now() - started,
+    };
+
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      embedding: {
+        dimension: contextMeta.dimension,
+        layout: "128-dim shared genre/platform/tag/publisher + continuous",
+        vocabSizes: {
+          genres: contextMeta.genres.length,
+          platforms: contextMeta.platforms.length,
+          tags: contextMeta.tags.length,
+          publishers: contextMeta.publishers.length,
+        },
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ ok: false, message }, { status: 500 });
+  }
+}
