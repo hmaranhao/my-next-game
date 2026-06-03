@@ -42,7 +42,10 @@ export type EmbeddingContextMeta = {
 export type ScoredCandidate = {
   gameId: string;
   game: import("@/types/game").NormalizedGame;
+  /** Concat profile+game (pgvector storage) */
   vector: Float32Array;
+  /** Game-only slice for TF.js inference */
+  gameVector: Float32Array;
   score: number;
   distance: number;
 };
@@ -60,7 +63,19 @@ export type CandidateSearchResult = {
     rating: number | null;
     score: number;
     distance: number;
+    gameVector: number[];
     metadata: import("@/types/game").NormalizedGame;
   }>;
   elapsedMs: number;
+};
+
+export type ModelRecommendation = {
+  gameId: string;
+  name: string;
+  genre: string | null;
+  platform: string | null;
+  rating: number | null;
+  matchPercent: number;
+  explanationKey: string;
+  explanationValues: Record<string, string | number>;
 };

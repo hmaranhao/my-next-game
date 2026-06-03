@@ -75,6 +75,7 @@ export function findTopGameCandidates(
       gameId: game.id,
       game,
       vector: combinedVector,
+      gameVector,
       score,
       distance,
     });

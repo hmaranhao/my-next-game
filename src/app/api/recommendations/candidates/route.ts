@@ -55,6 +55,7 @@ export async function POST(request: Request) {
         rating: c.game.rating,
         score: Math.round(c.score * 1000) / 1000,
         distance: Math.round(c.distance * 1000) / 1000,
+        gameVector: vectorToArray(c.gameVector),
         metadata: c.game,
       })),
       elapsedMs: Date.now() - started,

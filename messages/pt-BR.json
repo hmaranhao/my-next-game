@@ -11,10 +11,21 @@
     "profileReady": "Perfil carregado",
     "gamesPlayed": "{count} jogos na biblioteca",
     "genres": "Gêneros inferidos",
-    "nextStep": "Em breve: recomendação com IA",
+    "nextStep": "Recomendação final abaixo",
     "candidatesTitle": "Top candidatos (busca vetorial)",
     "candidatesCount": "{count} jogos indexados em {ms}ms",
     "searchingCandidates": "Buscando candidatos similares…"
+  },
+  "recommendation": {
+    "title": "Seu próximo game",
+    "training": "Treinando modelo no navegador… {progress}%",
+    "epoch": "Época {epoch}",
+    "match": "{percent}% de match",
+    "waiting": "Preparando modelo colaborativo…",
+    "explainGenreAndHistory": "Combina com seu gosto por {genre} e lembra o que você curtiu em {played}. Match de {match}%.",
+    "explainGenre": "Alinhado ao gênero {genre} que você mais joga. Match de {match}%.",
+    "explainPlatform": "Boa opção para {platform}, com perfil parecido com o seu. Match de {match}%.",
+    "explainGeneric": "{game} foi o melhor entre os 50 candidatos (match {match}%)."
   },
   "lgpd": {
     "title": "Consentimento de dados (LGPD)",
