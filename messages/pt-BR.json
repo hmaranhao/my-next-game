@@ -6,7 +6,39 @@
   "home": {
     "cta": "Ver meu próximo game",
     "steamPlaceholder": "Steam ID ou URL do perfil",
-    "manualFallback": "Perfil privado? Preencher manualmente"
+    "manualFallback": "Perfil privado? Preencher manualmente",
+    "loading": "Analisando seu perfil Steam…",
+    "profileReady": "Perfil carregado",
+    "gamesPlayed": "{count} jogos na biblioteca",
+    "genres": "Gêneros inferidos",
+    "nextStep": "Em breve: recomendação com IA"
+  },
+  "lgpd": {
+    "title": "Consentimento de dados (LGPD)",
+    "body": "Para personalizar a recomendação, coletamos dados públicos do seu perfil Steam (jogos, tempo de jogo, país e gêneros inferidos). Os dados são usados apenas para esta finalidade e você pode usar o formulário manual se preferir não compartilhar o perfil Steam.",
+    "accept": "Li e aceito",
+    "decline": "Cancelar",
+    "policyVersion": "Política v{version}"
+  },
+  "errors": {
+    "missingApiKey": "Chave Steam API não configurada no servidor.",
+    "profilePrivate": "Seu perfil Steam é privado. Use o formulário manual.",
+    "notFound": "Perfil Steam não encontrado.",
+    "generic": "Não foi possível carregar o perfil. Tente novamente.",
+    "consentRequired": "Aceite o consentimento LGPD para continuar."
+  },
+  "manual": {
+    "title": "Perfil manual",
+    "subtitle": "Conte-nos suas preferências sem conectar a Steam",
+    "displayName": "Seu nome ou apelido",
+    "favoriteGenres": "Gêneros favoritos (separados por vírgula)",
+    "favoriteGames": "Jogos favoritos (um por linha)",
+    "playedGames": "Jogos que você já jogou (não recomendar estes)",
+    "playtime": "Horas de jogo aproximadas (opcional)",
+    "ageRange": "Faixa etária (opcional, ex: 25-34)",
+    "country": "País (opcional, ex: BR)",
+    "submit": "Salvar perfil",
+    "back": "Voltar"
   },
   "locale": {
     "label": "Idioma"

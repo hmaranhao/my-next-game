@@ -6,7 +6,39 @@
   "home": {
     "cta": "See my next game",
     "steamPlaceholder": "Steam ID or profile URL",
-    "manualFallback": "Private profile? Fill in manually"
+    "manualFallback": "Private profile? Fill in manually",
+    "loading": "Analyzing your Steam profile…",
+    "profileReady": "Profile loaded",
+    "gamesPlayed": "{count} games in library",
+    "genres": "Inferred genres",
+    "nextStep": "Coming soon: AI recommendation"
+  },
+  "lgpd": {
+    "title": "Data consent (LGPD)",
+    "body": "To personalize recommendations, we collect public data from your Steam profile (games, playtime, country, and inferred genres). Data is used only for this purpose. You may use the manual form instead if you prefer not to share your Steam profile.",
+    "accept": "I have read and accept",
+    "decline": "Cancel",
+    "policyVersion": "Policy v{version}"
+  },
+  "errors": {
+    "missingApiKey": "Steam API key is not configured on the server.",
+    "profilePrivate": "Your Steam profile is private. Use the manual form.",
+    "notFound": "Steam profile not found.",
+    "generic": "Could not load profile. Please try again.",
+    "consentRequired": "Accept LGPD consent to continue."
+  },
+  "manual": {
+    "title": "Manual profile",
+    "subtitle": "Tell us your preferences without connecting Steam",
+    "displayName": "Your name or nickname",
+    "favoriteGenres": "Favorite genres (comma-separated)",
+    "favoriteGames": "Favorite games (one per line)",
+    "playedGames": "Games you already played (exclude from recommendations)",
+    "playtime": "Approximate playtime hours (optional)",
+    "ageRange": "Age range (optional, e.g. 25-34)",
+    "country": "Country (optional, e.g. US)",
+    "submit": "Save profile",
+    "back": "Back"
   },
   "locale": {
     "label": "Language"

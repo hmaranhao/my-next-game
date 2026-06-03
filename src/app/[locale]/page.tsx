@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Gamepad2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { HomeFlow } from "@/components/home-flow";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -35,25 +35,13 @@ export default async function HomePage({ params }: Props) {
         </h1>
         <p className="mt-4 max-w-md text-muted-foreground">{t("app.tagline")}</p>
 
-        <div className="mt-10 w-full max-w-sm space-y-4">
-          <input
-            type="text"
-            placeholder={t("home.steamPlaceholder")}
-            className="h-11 w-full rounded-lg border border-border bg-card/80 px-4 text-sm outline-none ring-[var(--gamer-accent)] placeholder:text-muted-foreground focus:ring-2"
-            disabled
-            aria-label={t("home.steamPlaceholder")}
-          />
-          <Button size="lg" className="w-full gamer-cta" disabled>
-            {t("home.cta")}
-          </Button>
-          <button
-            type="button"
-            className="text-sm text-muted-foreground underline-offset-4 hover:text-[var(--gamer-accent)] hover:underline"
-            disabled
-          >
-            {t("home.manualFallback")}
-          </button>
-        </div>
+        <HomeFlow
+          labels={{
+            steamPlaceholder: t("home.steamPlaceholder"),
+            cta: t("home.cta"),
+            manualFallback: t("home.manualFallback"),
+          }}
+        />
       </main>
     </div>
   );
