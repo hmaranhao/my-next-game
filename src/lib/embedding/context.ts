@@ -1,4 +1,5 @@
 import type { NormalizedGame } from "@/types/game";
+import { splitGenreTokens } from "./genre-utils";
 import {
   EMBEDDING_DIMENSION,
   EMBEDDING_LAYOUT,
@@ -50,7 +51,7 @@ export function buildEmbeddingContext(games: NormalizedGame[]): EmbeddingContext
   const prices: number[] = [];
 
   for (const g of games) {
-    bump(genreCounts, g.genre);
+    for (const token of splitGenreTokens(g.genre)) bump(genreCounts, token);
     bump(platformCounts, g.platform);
     for (const t of g.tags) bump(tagCounts, t);
     bump(publisherCounts, g.publisher);

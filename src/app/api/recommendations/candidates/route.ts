@@ -11,7 +11,11 @@ import { vectorToArray } from "@/lib/embedding/encode";
 import { buildEmbeddingContext } from "@/lib/embedding/context";
 import { encodePlayedLibraryWeightedVector } from "@/lib/embedding/played-games";
 import { buildGameLookup } from "@/lib/game-lookup";
+import { resolveLastPlayedCatalogGame } from "@/lib/embedding/last-played";
+import { classifyGameTier } from "@/lib/embedding/game-tier";
 import type { CandidateSearchResult } from "@/types/embedding";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const started = Date.now();
@@ -19,6 +23,8 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       snapshotId?: string;
       metric?: "cosine" | "l2";
+      excludeGameIds?: string[];
+      ignoreFeedback?: boolean;
     };
 
     if (!body.snapshotId) {
@@ -36,6 +42,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const extraRejectIds = (body.excludeGameIds ?? [])
+      .map((id) => String(id).trim())
+      .filter(Boolean);
+
     const metric = body.metric ?? getDistanceMetric();
     const { games } = await loadGamesDataset();
     const {
@@ -45,9 +55,23 @@ export async function POST(request: Request) {
       profileTags,
       scoredCount,
       searchBackend,
-    } = await findTopGameCandidatesAsync(snapshot.profile, games, metric);
+      rejectedGameIds,
+    } = await findTopGameCandidatesAsync(
+      snapshot.profile,
+      games,
+      metric,
+      snapshot.id,
+      extraRejectIds,
+      { ignoreFeedback: body.ignoreFeedback === true },
+    );
     const ctx = buildEmbeddingContext(games);
     const lookup = buildGameLookup(games);
+    const anchorGame = resolveLastPlayedCatalogGame(
+      snapshot.profile,
+      games,
+      lookup,
+    );
+    const anchorTier = anchorGame ? classifyGameTier(anchorGame) : null;
     const playedGameWeightedVector = encodePlayedLibraryWeightedVector(
       snapshot.profile,
       games,
@@ -93,7 +117,9 @@ export async function POST(request: Request) {
       searchBackend,
       useSampleCatalog: process.env.USE_SAMPLE_GAME_DATA === "true",
       finalPickTopN: getFinalPickTopN(),
+      rejectedGameIds,
       profileTags,
+      anchorTier,
       embedding: {
         dimension: contextMeta.dimension,
         layout: "128-dim shared genre/platform/tag/publisher + continuous",

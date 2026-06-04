@@ -6,6 +6,7 @@ import {
 } from "@/types/embedding";
 import { type EmbeddingContext, norm } from "./context";
 import { ENCODE_WEIGHTS } from "./config";
+import { splitGenreTokens } from "./genre-utils";
 
 function zeros(): Float32Array {
   return new Float32Array(EMBEDDING_DIMENSION);
@@ -74,6 +75,9 @@ export function encodeProfileVector(
     W.profileTag * 0.65,
   );
   setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profileTags, W.profileTag);
+  if (profile.steamTags?.length) {
+    setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profile.steamTags, W.profileTag * 1.1);
+  }
 
   if (profile.source === "STEAM") {
     setOneHot(vec, L.platformStart, L.platformSize, ctx.platformIndex, "PC", 1);
@@ -125,6 +129,9 @@ export function encodeProfileVectorFromLibrary(
 
   const W = ENCODE_WEIGHTS;
   setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profileTags, W.profileTag * 0.4);
+  if (profile.steamTags?.length) {
+    setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profile.steamTags, W.profileTag * 0.9);
+  }
 
   if (profile.source === "STEAM") {
     setOneHot(vec, L.platformStart, L.platformSize, ctx.platformIndex, "PC", 1);
@@ -151,7 +158,14 @@ export function encodeGameVector(
   const vec = zeros();
   const W = ENCODE_WEIGHTS;
 
-  setOneHot(vec, L.genreStart, L.genreSize, ctx.genreIndex, game.genre, W.gameGenre);
+  setMultiHot(
+    vec,
+    L.genreStart,
+    L.genreSize,
+    ctx.genreIndex,
+    splitGenreTokens(game.genre),
+    W.gameGenre,
+  );
   setOneHot(
     vec,
     L.platformStart,

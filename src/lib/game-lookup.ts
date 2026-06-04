@@ -24,6 +24,32 @@ export function buildGameLookup(games: NormalizedGame[]): GameLookup {
   return { byAppId, byName };
 }
 
+/** Merge pgvector slim metadata with full catalog fields (reviews, devs, etc.). */
+export function enrichCatalogGame(
+  game: NormalizedGame,
+  lookup: GameLookup,
+): NormalizedGame {
+  const parsedId = Number.parseInt(game.id, 10);
+  const appId =
+    game.steamAppId ??
+    (Number.isFinite(parsedId) ? parsedId : null);
+  const full = findCatalogGame(game.name, appId, lookup, []);
+  if (!full) return game;
+
+  return {
+    ...full,
+    ...game,
+    positiveReviews: game.positiveReviews ?? full.positiveReviews,
+    recommendations: game.recommendations ?? full.recommendations,
+    estimatedOwnersMid: game.estimatedOwnersMid ?? full.estimatedOwnersMid,
+    estimatedOwners: game.estimatedOwners ?? full.estimatedOwners,
+    publisher: game.publisher ?? full.publisher,
+    developers: game.developers?.length ? game.developers : full.developers,
+    tags: game.tags?.length ? game.tags : full.tags,
+    raw: { ...full.raw, ...game.raw },
+  };
+}
+
 export function findCatalogGame(
   steamName: string,
   appId: number | null | undefined,

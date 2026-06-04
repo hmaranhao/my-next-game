@@ -9,26 +9,52 @@ function minMaxNormalize(values) {
   return values.map((v) => (v - min) / span);
 }
 
-const RANK_W = 0.72;
-const TF_W = 0.28;
+const RANK_W = 0.9;
+const TF_W = 0.1;
+const MATCH_FLOOR = 62;
+const MATCH_CEIL = 97;
+const TOP3_MIN = [88, 84, 80];
+
+function calibrateToMatchPercents(values) {
+  const n = values.length;
+  if (n === 0) return [];
+  const order = values.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v);
+  const out = new Array(n);
+  order.forEach(({ i }, rank) => {
+    const relative = n <= 1 ? 1 : 1 - rank / (n - 1);
+    let pct = Math.round(MATCH_FLOOR + relative * (MATCH_CEIL - MATCH_FLOOR));
+    if (rank < TOP3_MIN.length) pct = Math.max(pct, TOP3_MIN[rank]);
+    out[i] = Math.min(MATCH_CEIL, pct);
+  });
+  return out;
+}
 
 function scoreAllHybrid(candidates, tfById) {
   const tfRaw = candidates.map((c) => tfById.get(c.gameId) ?? 0);
   const tfNorm = minMaxNormalize(tfRaw);
-  return candidates.map((c, i) => {
+  const scored = candidates.map((c, i) => {
     const rank = c.rankScore ?? c.vectorScore;
     const combined = RANK_W * rank + TF_W * tfNorm[i];
-    return {
-      ...c,
-      matchPercent: Math.round(combined * 100),
-      combinedScore: combined,
-    };
+    return { ...c, combinedScore: combined, matchPercent: 0 };
   });
+  const percents = calibrateToMatchPercents(scored.map((s) => s.combinedScore));
+  return scored.map((s, i) => ({ ...s, matchPercent: percents[i] }));
 }
 
 function pickHybrid(candidates, tfById) {
+  const byRank = [...candidates].sort(
+    (a, b) => (b.rankScore ?? b.vectorScore) - (a.rankScore ?? a.vectorScore),
+  );
+  const topRank = byRank[0].rankScore ?? byRank[0].vectorScore;
+  const shortlistIds = new Set(
+    byRank
+      .filter((c) => (c.rankScore ?? c.vectorScore) >= topRank - 0.025)
+      .slice(0, 6)
+      .map((c) => c.gameId),
+  );
   const scored = scoreAllHybrid(candidates, tfById);
-  return scored.reduce((a, b) => (b.combinedScore > a.combinedScore ? b : a));
+  const finalists = scored.filter((s) => shortlistIds.has(s.gameId));
+  return finalists.reduce((a, b) => (b.combinedScore > a.combinedScore ? b : a));
 }
 
 const candidates = [
@@ -53,6 +79,19 @@ if (pick.matchPercent !== pickInScored.matchPercent) {
 
 if (pick.gameId !== "rpg-a") {
   throw new Error(`expected rpg-a, got ${pick.gameId}`);
+}
+
+if (pick.matchPercent < 80) {
+  throw new Error(`expected calibrated match >= 80, got ${pick.matchPercent}`);
+}
+
+const topThree = [...scored]
+  .sort((a, b) => b.combinedScore - a.combinedScore)
+  .slice(0, 3);
+for (const [i, entry] of topThree.entries()) {
+  if (entry.matchPercent < TOP3_MIN[i]) {
+    throw new Error(`top ${i + 1} should be >= ${TOP3_MIN[i]}, got ${entry.matchPercent}`);
+  }
 }
 
 console.log("ml feature tests OK");

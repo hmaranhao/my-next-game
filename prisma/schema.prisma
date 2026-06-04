@@ -42,6 +42,11 @@ model LgpdConsent {
   @@map("lgpd_consents")
 }
 
+enum FeedbackRating {
+  UP
+  DOWN
+}
+
 model RecommendationSession {
   id                String   @id @default(cuid())
   profileSnapshotId String
@@ -49,6 +54,7 @@ model RecommendationSession {
 
   profileSnapshot UserProfileSnapshot       @relation(fields: [profileSnapshotId], references: [id], onDelete: Cascade)
   candidates      RecommendationCandidate[]
+  feedback        RecommendationFeedback[]
 
   @@index([profileSnapshotId])
   @@map("recommendation_sessions")
@@ -101,4 +107,22 @@ model GameCatalogEntry {
   @@unique([catalogId, gameExternalId])
   @@index([catalogId])
   @@map("game_catalog_entries")
+}
+
+model RecommendationFeedback {
+  id                String          @id @default(cuid())
+  sessionId         String
+  profileSnapshotId String
+  steamId           String?
+  gameExternalId    String
+  rating            FeedbackRating
+  gameMetadata      Json
+  createdAt         DateTime        @default(now())
+
+  session RecommendationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([profileSnapshotId])
+  @@index([steamId])
+  @@index([sessionId])
+  @@map("recommendation_feedback")
 }

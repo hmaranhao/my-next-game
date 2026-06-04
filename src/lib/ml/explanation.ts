@@ -1,13 +1,24 @@
 import type { NormalizedGame } from "@/types/game";
 import type { NormalizedUserProfile } from "@/types/profile";
-import { getProfileLibraryEntries } from "@/lib/embedding/played-games";
+import { resolveLastPlayedEntry } from "@/lib/embedding/last-played";
+import { splitGenreTokens } from "@/lib/embedding/genre-utils";
+import {
+  classifyGameTier,
+  type GameProductionTier,
+} from "@/lib/embedding/game-tier";
 
 export type ExplanationPayload = {
   explanationKey: string;
   explanationValues: Record<string, string | number>;
 };
 
-const LOW_MATCH_THRESHOLD = 15;
+const LOW_MATCH_THRESHOLD = 55;
+
+const TIER_LABELS: Record<GameProductionTier, string> = {
+  AAA: "AAA",
+  AA: "AA",
+  INDIE: "indie",
+};
 
 /** Template-based explanation for i18n (pt-BR / en-US). */
 export function buildRecommendationExplanation(
@@ -15,8 +26,18 @@ export function buildRecommendationExplanation(
   game: NormalizedGame,
   matchPercent: number,
   candidatePoolSize = 1000,
+  anchorTier?: GameProductionTier | null,
 ): ExplanationPayload {
   const pool = candidatePoolSize;
+  const lastPlayed =
+    resolveLastPlayedEntry(profile)?.name ??
+    profile.topGames[0]?.name ??
+    profile.playedGameNames[0] ??
+    "";
+
+  const candidateTier = classifyGameTier(game);
+  const tierMatch =
+    anchorTier && anchorTier === candidateTier ? anchorTier : null;
 
   if (matchPercent < LOW_MATCH_THRESHOLD) {
     return {
@@ -29,22 +50,45 @@ export function buildRecommendationExplanation(
     };
   }
 
-  const sharedGenre = profile.inferredGenres.find(
-    (g) => g.toLowerCase() === (game.genre ?? "").toLowerCase(),
-  );
-  const topPlayed =
-    getProfileLibraryEntries(profile)[0]?.name ??
-    profile.topGames[0]?.name ??
-    profile.playedGameNames[0] ??
-    "";
-
-  if (sharedGenre && topPlayed) {
+  if (tierMatch && lastPlayed) {
     return {
-      explanationKey: "recommendation.explainGenreAndHistory",
+      explanationKey: "recommendation.explainTierMatch",
       explanationValues: {
-        genre: sharedGenre,
         game: game.name,
-        played: topPlayed,
+        played: lastPlayed,
+        tier: TIER_LABELS[tierMatch],
+        match: matchPercent,
+      },
+    };
+  }
+
+  const sharedGenre = profile.inferredGenres.find((g) =>
+    splitGenreTokens(game.genre).some(
+      (gt) => gt.toLowerCase() === g.toLowerCase(),
+    ),
+  );
+  const sharedTag = (profile.steamTags ?? []).find((tag) =>
+    game.tags.some((t) => t.toLowerCase() === tag.toLowerCase()),
+  );
+
+  if (lastPlayed) {
+    return {
+      explanationKey: "recommendation.explainLastPlayed",
+      explanationValues: {
+        game: game.name,
+        played: lastPlayed,
+        match: matchPercent,
+      },
+    };
+  }
+
+  if (sharedTag) {
+    return {
+      explanationKey: "recommendation.explainTagAndHistory",
+      explanationValues: {
+        tag: sharedTag,
+        game: game.name,
+        played: lastPlayed,
         match: matchPercent,
       },
     };

@@ -10,6 +10,7 @@
  *   DATABASE_URL — Postgres with pgvector (Neon em produção)
  *   INDEX_GAME_LIMIT — cap opcional (ex.: 5000 para teste). Default: sem limite.
  *   INDEX_SOURCE — normalized | cloud | sample (default: normalized)
+ *   INDEX_REPLACE — delete all catalogs before index (default: true)
  */
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
@@ -26,6 +27,10 @@ import { applySearchWeights, toPgVectorLiteral } from "../src/lib/embedding/vect
 import { getGamePopularity } from "../src/lib/embedding/popularity";
 import { activateEmbeddingCatalog } from "../src/lib/embedding/catalog";
 import { jsonSafeStringify } from "../src/lib/json-safe";
+import {
+  NEON_FREE_TIER_GAME_CAP,
+  slimGameForIndex,
+} from "../src/lib/game-metadata-slim";
 
 const INSERT_BATCH = 200;
 const root = process.cwd();
@@ -116,13 +121,14 @@ async function insertBatch(
   );
 }
 
-async function pruneInactiveCatalogs(prisma: PrismaClient): Promise<void> {
-  const removed = await prisma.embeddingCatalog.deleteMany({
-    where: { isActive: false },
-  });
-  if (removed.count > 0) {
-    console.log(`Removed ${removed.count} inactive catalog(s).`);
-  }
+async function replaceExistingCatalogs(prisma: PrismaClient): Promise<number> {
+  const removed = await prisma.embeddingCatalog.deleteMany({});
+  return removed.count;
+}
+
+function shouldReplaceCatalogs(): boolean {
+  const raw = (process.env.INDEX_REPLACE ?? "true").toLowerCase();
+  return raw !== "false" && raw !== "0";
 }
 
 async function main() {
@@ -139,7 +145,32 @@ async function main() {
     throw new Error("Empty game list");
   }
 
-  await pruneInactiveCatalogs(prisma);
+  if (
+    games.length > NEON_FREE_TIER_GAME_CAP &&
+    !process.env.INDEX_GAME_LIMIT &&
+    process.env.DATABASE_URL?.includes("neon.tech")
+  ) {
+    console.warn(
+      `\n⚠ Neon free tier (~512 MB): ${games.length} jogos pode estourar o limite.`,
+    );
+    console.warn(
+      `  Use INDEX_GAME_LIMIT=${NEON_FREE_TIER_GAME_CAP} ou faça upgrade do plano Neon.\n`,
+    );
+  }
+
+  if (shouldReplaceCatalogs()) {
+    const removed = await replaceExistingCatalogs(prisma);
+    if (removed > 0) {
+      console.log(`Removed ${removed} existing catalog(s) (INDEX_REPLACE).`);
+    }
+  } else {
+    const inactive = await prisma.embeddingCatalog.deleteMany({
+      where: { isActive: false },
+    });
+    if (inactive.count > 0) {
+      console.log(`Removed ${inactive.count} inactive catalog(s).`);
+    }
+  }
 
   console.log("Building embedding vocabulary…");
   const ctx = buildEmbeddingContext(games);
@@ -173,7 +204,7 @@ async function main() {
       pending.push({
         id: randomUUID(),
         gameId: game.id,
-        metadata: jsonSafeStringify(game),
+        metadata: jsonSafeStringify(slimGameForIndex(game)),
         vecLit: toPgVectorLiteral(searchVec),
         popularity: getGamePopularity(game),
       });

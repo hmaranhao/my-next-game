@@ -11,6 +11,9 @@
     "profileReady": "Profile loaded",
     "gamesPlayed": "{count} games in library",
     "genres": "Inferred genres",
+    "lastPlayed": "Reference (10h+ recent)",
+    "lastPlayedHours": "{hours}h played",
+    "lastPlayedTier": "Tier {tier}",
     "nextStep": "Final pick below",
     "candidatesTitle": "Top candidates (vector search)",
     "candidatesFinalPool": "Final pick will be one of these top {count}",
@@ -22,6 +25,8 @@
     "candidatesLimitedPool": "Showing {shown} of {target} candidates (limited catalog or library overlap).",
     "candidatesCount": "{count} games indexed in {ms}ms",
     "searchingCandidates": "Finding similar candidates…",
+    "showAllCandidates": "See all ({count})",
+    "showFewerCandidates": "Show fewer",
     "searchAnother": "Search another profile"
   },
   "game": {
@@ -41,7 +46,17 @@
     "explainGenre": "Aligned with {genre}, a genre you play often. {match}% match.",
     "explainPlatform": "A strong pick for {platform} based on your profile. {match}% match.",
     "explainGeneric": "{game} ranked best among {pool} indexed candidates ({match}% match).",
-    "explainLowMatch": "Low compatibility ({match}%). None of the {pool} candidates fit well — {game} was the closest match."
+    "explainLowMatch": "Low compatibility ({match}%). None of the {pool} candidates fit well — {game} was the closest match.",
+    "explainTagAndHistory": "Matches your Steam taste for {tag} and what you enjoyed in {played}. {match}% match.",
+    "explainLastPlayed": "Similar to what you've been playing lately ({played}, 10h+). {match}% match.",
+    "explainTierMatch": "Same production tier ({tier}) as {played} — {game} matches that scale. {match}% match."
+  },
+  "feedback": {
+    "prompt": "Was this recommendation on point?",
+    "up": "Yes, good pick",
+    "down": "Not for me",
+    "thanksUp": "Thanks! We'll favor similar games next time.",
+    "thanksDown": "Got it — finding another recommendation…"
   },
   "lgpd": {
     "title": "Data consent (LGPD)",
@@ -58,7 +73,10 @@
     "generic": "Could not load profile. Please try again.",
     "consentRequired": "Accept LGPD consent to continue.",
     "candidatesUnavailable": "Server was busy finding candidates. Please try again shortly.",
-    "invalidApiResponse": "Invalid response from the recommendations API."
+    "invalidApiResponse": "Invalid response from the recommendations API.",
+    "noCandidatesAfterFeedback": "No candidates left after your rejections. Try another profile.",
+    "noCandidatesEmptyPool": "No games passed the quality filters for this profile. Clear rejections or try another profile.",
+    "retryCandidates": "Clear rejections and try again"
   },
   "manual": {
     "title": "Manual profile",

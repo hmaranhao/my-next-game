@@ -19,6 +19,10 @@ export type NormalizedUserProfile = {
   accountAgeYears: number | null;
   isPublic: boolean;
   inferredGenres: string[];
+  /** Tags/categories from Steam Store for top library games (weighted). */
+  steamTags?: string[];
+  /** Last game with 10h+ playtime used as recommendation anchor. */
+  lastPlayedGame?: ProfileGameEntry | null;
   topGames: ProfileGameEntry[];
   recentGames: ProfileGameEntry[];
   /** Top owned games by playtime — used for weighted taste modeling (up to ~50). */

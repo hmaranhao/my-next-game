@@ -4,6 +4,9 @@ import type { ProfileGameEntry } from "@/types/profile";
 export const ABANDONED_PLAYTIME_MINUTES = 120;
 export const ABANDONED_WEIGHT_FACTOR = 0.35;
 
+/** Min playtime for "last meaningful game" recommendation anchor (default 10h). */
+export const MEANINGFUL_ANCHOR_PLAYTIME_MINUTES = 600;
+
 /** Max library entries used to build the profile vector. */
 export const LIBRARY_ENCODE_LIMIT = 50;
 /** Max library games sent to TF.js user vector. */

@@ -7,13 +7,21 @@ import {
   encodeProfileVectorFromLibrary,
 } from "./encode";
 import { scoreVectors } from "./distance";
-import { getCandidateTopK } from "./config";
-import { blendRankScore, getGamePopularity } from "./popularity";
+import { getCandidateTopK, getFinalPickTopN } from "./config";
+import { scoreCandidateForRanking } from "./candidate-ranking";
+import type { SocialProofFloorMode } from "./social-proof";
+import { enrichCatalogGame } from "@/lib/game-lookup";
+import { resolveLastPlayedCatalogGame } from "./last-played";
 import {
   collectLibraryCatalogMatches,
   collectProfileTags,
 } from "./played-games";
 import { buildGameLookup } from "@/lib/game-lookup";
+import {
+  buildTasteSignals,
+  mergeRejectedGameIds,
+  type StoredFeedback,
+} from "./taste-signals";
 
 export function normalizeGameName(name: string): string {
   return name
@@ -138,6 +146,8 @@ export function findTopGameCandidates(
   profile: NormalizedUserProfile,
   games: NormalizedGame[],
   metric: DistanceMetric,
+  feedback: StoredFeedback[] = [],
+  extraRejectIds: string[] = [],
 ): {
   queryVector: Float32Array;
   candidates: ScoredCandidate[];
@@ -158,37 +168,86 @@ export function findTopGameCandidates(
   );
   const playedNames = buildPlayedNameSet(profile);
   const playedAppIds = buildPlayedAppIdSet(profile);
+  const taste = buildTasteSignals(profile, games, lookup, feedback);
+  const rejectedIds = mergeRejectedGameIds(feedback, extraRejectIds);
+  const lastPlayedCatalogGame = resolveLastPlayedCatalogGame(
+    profile,
+    games,
+    lookup,
+  );
+  const rankingCtx = {
+    profile,
+    profileTags,
+    taste,
+    embeddingCtx: ctx,
+    metric,
+    lastPlayedCatalogGame,
+  };
 
   const topK = getCandidateTopK();
+  const minCandidates = Math.min(getFinalPickTopN(), topK);
   const heap: ScoredDraft[] = [];
+  const seenIds = new Set<string>();
   let scoredCount = 0;
 
-  for (const game of games) {
-    if (isGameAlreadyPlayed(game, playedNames, playedAppIds)) continue;
+  const floorModes: SocialProofFloorMode[] = ["strict", "relaxed", "emergency"];
 
-    const gameVector = encodeGameVector(game, ctx);
+  function tryScoreGame(game: NormalizedGame, floor: SocialProofFloorMode) {
+    if (isGameAlreadyPlayed(game, playedNames, playedAppIds)) return;
+    if (rejectedIds.has(game.id)) return;
+    if (seenIds.has(game.id)) return;
+
+    const enriched = enrichCatalogGame(game, lookup);
+    const gameVector = encodeGameVector(enriched, ctx);
     const { score: vectorScore, distance } = scoreVectors(
       queryVector,
       gameVector,
       metric,
     );
-    const popularity = getGamePopularity(game);
-    const rankScore = blendRankScore(vectorScore, popularity);
+    const scored = scoreCandidateForRanking(
+      enriched,
+      vectorScore,
+      rankingCtx,
+      { floor },
+    );
+    if (!scored) return;
 
+    seenIds.add(game.id);
     pushTopK(
       heap,
       {
         gameId: game.id,
-        game,
+        game: enriched,
         gameVector,
         vectorScore,
-        popularityScore: popularity,
-        score: rankScore,
+        popularityScore: scored.popularityScore,
+        score: scored.rankScore,
         distance,
       },
       topK,
     );
     scoredCount += 1;
+  }
+
+  for (const floor of floorModes) {
+    if (heap.length >= topK) break;
+    for (const game of games) {
+      if (heap.length >= topK) break;
+      tryScoreGame(game, floor);
+    }
+  }
+
+  if (heap.length < minCandidates) {
+    const byPopularity = [...games].sort(
+      (a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0),
+    );
+    for (const floor of floorModes) {
+      if (heap.length >= topK) break;
+      for (const game of byPopularity.slice(0, 1500)) {
+        if (heap.length >= topK) break;
+        tryScoreGame(game, floor);
+      }
+    }
   }
 
   const candidates = finalizeCandidates(heap, queryVector);

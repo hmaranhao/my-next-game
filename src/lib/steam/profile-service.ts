@@ -1,7 +1,6 @@
 import type { ManualProfileInput, NormalizedUserProfile } from "@/types/profile";
 import {
   fetchAchievementSample,
-  fetchGenresForApp,
   fetchOwnedGames,
   fetchPlayerSummary,
   fetchRecentGames,
@@ -9,8 +8,12 @@ import {
   resolveSteamId,
   SteamApiError,
 } from "./client";
+import { fetchSteamAppStoreMetaBatch } from "./store-details";
+import { entryPlaytimeWeight } from "@/lib/embedding/playtime-weights";
+import { resolveMeaningfulLastPlayedAnchor } from "@/lib/embedding/played-games";
 
 const PUBLIC_VISIBILITY = 3;
+const STEAM_STORE_LOOKUP_LIMIT = 15;
 
 export async function buildSteamProfile(
   steamInput: string,
@@ -43,11 +46,54 @@ export async function buildSteamProfile(
   const recentGames = recent.map(mapGameEntry);
   const playedAppIds = owned.map((g) => g.appid);
 
+  const lastPlayedGame = resolveMeaningfulLastPlayedAnchor(
+    recentGames,
+    libraryGames,
+  );
+
+  const storeLookupIds = [
+    ...new Set([
+      ...(lastPlayedGame?.appId ? [lastPlayedGame.appId] : []),
+      ...sorted.slice(0, STEAM_STORE_LOOKUP_LIMIT).map((g) => g.appid),
+    ]),
+  ].slice(0, STEAM_STORE_LOOKUP_LIMIT + 1);
+  const storeMeta = await fetchSteamAppStoreMetaBatch(storeLookupIds);
+
   const genreSet = new Set<string>();
-  for (const game of sorted.slice(0, 5)) {
-    const genres = await fetchGenresForApp(game.appid);
-    genres.forEach((g) => genreSet.add(g));
+  const tagWeights = new Map<string, number>();
+
+  for (const game of sorted.slice(0, STEAM_STORE_LOOKUP_LIMIT)) {
+    const entry = mapGameEntry(game);
+    const weight = entryPlaytimeWeight(entry);
+    const meta = storeMeta.get(game.appid);
+    if (!meta) continue;
+
+    for (const genre of meta.genres) {
+      genreSet.add(genre);
+      tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + weight * 0.8);
+    }
+    for (const category of meta.categories) {
+      tagWeights.set(category, (tagWeights.get(category) ?? 0) + weight);
+    }
   }
+
+  if (lastPlayedGame?.appId) {
+    const lastMeta = storeMeta.get(lastPlayedGame.appId);
+    if (lastMeta) {
+      for (const genre of lastMeta.genres) {
+        genreSet.add(genre);
+        tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + 2.2);
+      }
+      for (const category of lastMeta.categories) {
+        tagWeights.set(category, (tagWeights.get(category) ?? 0) + 2.5);
+      }
+    }
+  }
+
+  const steamTags = [...tagWeights.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 28)
+    .map(([tag]) => tag);
 
   let achievementSample: NormalizedUserProfile["achievementSample"] = null;
   const topForAchievements = sorted[0];
@@ -88,6 +134,8 @@ export async function buildSteamProfile(
     accountAgeYears,
     isPublic: true,
     inferredGenres: [...genreSet],
+    steamTags,
+    lastPlayedGame,
     topGames,
     libraryGames,
     recentGames,

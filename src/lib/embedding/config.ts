@@ -44,8 +44,50 @@ export function getDimensionWeights(): Float32Array {
   return w;
 }
 
-/** How much popularity (reviews / owners) affects vector ranking 0–1. */
-export const POPULARITY_BLEND = 0.35;
+/** How much popularity (reviews / owners) affects final rank 0–1. */
+export function getPopularityBlend(): number {
+  const raw = Number.parseFloat(process.env.POPULARITY_BLEND ?? "0.28");
+  if (!Number.isFinite(raw)) return 0.28;
+  return Math.min(0.45, Math.max(0, raw));
+}
+
+/** Taste overlap (tags/genres) vs vector similarity. */
+export function getOverlapBlend(): number {
+  const raw = Number.parseFloat(process.env.OVERLAP_BLEND ?? "0.26");
+  if (!Number.isFinite(raw)) return 0.26;
+  return Math.min(0.45, Math.max(0, raw));
+}
+
+/** Steam user rating contribution to rank. */
+export function getQualityBlend(): number {
+  const raw = Number.parseFloat(process.env.QUALITY_BLEND ?? "0.12");
+  if (!Number.isFinite(raw)) return 0.12;
+  return Math.min(0.2, Math.max(0, raw));
+}
+
+/** How much the last-played game steers recommendations (default 0.32). */
+export function getLastPlayedBlend(): number {
+  const raw = Number.parseFloat(process.env.LAST_PLAYED_BLEND ?? "0.32");
+  if (!Number.isFinite(raw)) return 0.32;
+  return Math.min(0.45, Math.max(0, raw));
+}
+
+/** Production tier (AAA/AA/Indie) match vs anchor game. */
+export function getTierBlend(): number {
+  const raw = Number.parseFloat(process.env.TIER_BLEND ?? "0.14");
+  if (!Number.isFinite(raw)) return 0.14;
+  return Math.min(0.25, Math.max(0, raw));
+}
+
+/** Same developer / publisher as anchor. */
+export function getStudioBlend(): number {
+  const raw = Number.parseFloat(process.env.STUDIO_BLEND ?? "0.1");
+  if (!Number.isFinite(raw)) return 0.1;
+  return Math.min(0.18, Math.max(0, raw));
+}
+
+/** @deprecated use getPopularityBlend() — kept for imports */
+export const POPULARITY_BLEND = 0.28;
 
 /** Candidate pool size after vector ranking (default 1000). */
 export function getCandidateTopK(): number {
@@ -67,11 +109,11 @@ export function getApiResponseTopN(): number {
   return getFinalPickTopN();
 }
 
-/** TF.js + escolha final só entre os N melhores do ranking vetorial (default 10). */
+/** TF.js + escolha final só entre os N melhores do ranking vetorial (default 30). */
 export function getFinalPickTopN(): number {
-  const raw = Number.parseInt(process.env.VECTOR_FINAL_PICK_TOP_N ?? "10", 10);
+  const raw = Number.parseInt(process.env.VECTOR_FINAL_PICK_TOP_N ?? "30", 10);
   const topK = getCandidateTopK();
-  if (!Number.isFinite(raw) || raw < 1) return Math.min(10, topK);
+  if (!Number.isFinite(raw) || raw < 1) return Math.min(30, topK);
   return Math.min(raw, topK);
 }
 

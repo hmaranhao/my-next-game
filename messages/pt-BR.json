@@ -11,6 +11,9 @@
     "profileReady": "Perfil carregado",
     "gamesPlayed": "{count} jogos na biblioteca",
     "genres": "Gêneros inferidos",
+    "lastPlayed": "Referência (10h+ recente)",
+    "lastPlayedHours": "{hours}h jogadas",
+    "lastPlayedTier": "Nível {tier}",
     "nextStep": "Recomendação final abaixo",
     "candidatesTitle": "Top candidatos (busca vetorial)",
     "candidatesFinalPool": "A escolha final será um destes {count} jogos",
@@ -22,6 +25,8 @@
     "candidatesLimitedPool": "Mostrando {shown} de {target} candidatos (biblioteca ou catálogo limitado).",
     "candidatesCount": "{count} jogos indexados em {ms}ms",
     "searchingCandidates": "Buscando candidatos similares…",
+    "showAllCandidates": "Ver todos ({count})",
+    "showFewerCandidates": "Mostrar menos",
     "searchAnother": "Buscar outro perfil"
   },
   "game": {
@@ -41,7 +46,17 @@
     "explainGenre": "Alinhado ao gênero {genre} que você mais joga. Match de {match}%.",
     "explainPlatform": "Boa opção para {platform}, com perfil parecido com o seu. Match de {match}%.",
     "explainGeneric": "{game} foi o melhor entre {pool} candidatos indexados (match {match}%).",
-    "explainLowMatch": "Compatibilidade baixa ({match}%). Nenhum dos {pool} candidatos se encaixou bem — {game} foi o menos distante."
+    "explainLowMatch": "Compatibilidade baixa ({match}%). Nenhum dos {pool} candidatos se encaixou bem — {game} foi o menos distante.",
+    "explainTagAndHistory": "Combina com seu gosto na Steam por {tag} e lembra o que você curtiu em {played}. Match de {match}%.",
+    "explainLastPlayed": "No estilo do que você mais jogou recentemente ({played}, 10h+). Match de {match}%.",
+    "explainTierMatch": "Mesmo nível de produção ({tier}) que {played} — recomendamos {game} no mesmo patamar. Match de {match}%."
+  },
+  "feedback": {
+    "prompt": "A recomendação faz sentido para você?",
+    "up": "Sim, boa escolha",
+    "down": "Não é pra mim",
+    "thanksUp": "Obrigado! Vamos priorizar jogos parecidos.",
+    "thanksDown": "Entendido — buscando outra recomendação…"
   },
   "lgpd": {
     "title": "Consentimento de dados (LGPD)",
@@ -58,7 +73,10 @@
     "generic": "Não foi possível carregar o perfil. Tente novamente.",
     "consentRequired": "Aceite o consentimento LGPD para continuar.",
     "candidatesUnavailable": "Servidor ocupado ao buscar candidatos. Tente de novo em instantes.",
-    "invalidApiResponse": "Resposta inválida da API de recomendações."
+    "invalidApiResponse": "Resposta inválida da API de recomendações.",
+    "noCandidatesAfterFeedback": "Não há mais candidatos após suas rejeições. Tente buscar outro perfil ou limpe o histórico.",
+    "noCandidatesEmptyPool": "Nenhum jogo passou nos filtros de qualidade para este perfil. Tente limpar rejeições ou buscar outro perfil.",
+    "retryCandidates": "Limpar rejeições e tentar de novo"
   },
   "manual": {
     "title": "Perfil manual",
