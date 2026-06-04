@@ -88,3 +88,50 @@ export function buildEmbeddingContext(games: NormalizedGame[]): EmbeddingContext
 }
 
 export { norm };
+
+export function embeddingContextToStored(ctx: EmbeddingContext): EmbeddingContextMeta & {
+  genreIndex: Record<string, number>;
+  platformIndex: Record<string, number>;
+  tagIndex: Record<string, number>;
+  publisherIndex: Record<string, number>;
+} {
+  return {
+    dimension: ctx.dimension,
+    genres: ctx.genres,
+    platforms: ctx.platforms,
+    tags: ctx.tags,
+    publishers: ctx.publishers,
+    ratingMin: ctx.ratingMin,
+    ratingMax: ctx.ratingMax,
+    yearMin: ctx.yearMin,
+    yearMax: ctx.yearMax,
+    priceMin: ctx.priceMin,
+    priceMax: ctx.priceMax,
+    genreIndex: ctx.genreIndex,
+    platformIndex: ctx.platformIndex,
+    tagIndex: ctx.tagIndex,
+    publisherIndex: ctx.publisherIndex,
+  };
+}
+
+export function embeddingContextFromStored(
+  stored: ReturnType<typeof embeddingContextToStored>,
+): EmbeddingContext {
+  return {
+    dimension: stored.dimension,
+    genres: stored.genres,
+    platforms: stored.platforms,
+    tags: stored.tags,
+    publishers: stored.publishers,
+    ratingMin: stored.ratingMin,
+    ratingMax: stored.ratingMax,
+    yearMin: stored.yearMin,
+    yearMax: stored.yearMax,
+    priceMin: stored.priceMin,
+    priceMax: stored.priceMax,
+    genreIndex: stored.genreIndex,
+    platformIndex: stored.platformIndex,
+    tagIndex: stored.tagIndex,
+    publisherIndex: stored.publisherIndex,
+  };
+}

@@ -86,6 +86,8 @@ type ScoredDraft = {
   distance: number;
 };
 
+export type { ScoredDraft };
+
 /** Keep only the best `limit` items — O(n·k) memory instead of O(n). */
 function pushTopK(heap: ScoredDraft[], entry: ScoredDraft, limit: number): void {
   if (heap.length < limit) {
@@ -102,6 +104,13 @@ function pushTopK(heap: ScoredDraft[], entry: ScoredDraft, limit: number): void 
 }
 
 function finalizeCandidates(
+  drafts: ScoredDraft[],
+  queryVector: Float32Array,
+): ScoredCandidate[] {
+  return finalizeCandidatesFromDrafts(drafts, queryVector);
+}
+
+export function finalizeCandidatesFromDrafts(
   drafts: ScoredDraft[],
   queryVector: Float32Array,
 ): ScoredCandidate[] {

@@ -12,6 +12,8 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:index-embeddings": "tsx scripts/index-game-embeddings.ts",
+    "db:index-embeddings:full": "tsx scripts/index-game-embeddings.ts",
     "db:studio": "prisma studio",
     "data:download": "PATH=\"$HOME/.local/bin:$PATH\" python3 scripts/download-kaggle-data.py",
     "data:setup": "pip install -r scripts/requirements-data.txt",

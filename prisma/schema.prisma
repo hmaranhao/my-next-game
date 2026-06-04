@@ -70,3 +70,35 @@ model RecommendationCandidate {
   @@index([gameExternalId])
   @@map("recommendation_candidates")
 }
+
+/** Vocab + norms used when indexing game vectors (must match query encoding). */
+model EmbeddingCatalog {
+  id          String   @id @default(cuid())
+  label       String
+  contextMeta Json
+  gameCount   Int      @default(0)
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  entries GameCatalogEntry[]
+
+  @@index([isActive])
+  @@map("embedding_catalogs")
+}
+
+/** Indexed game catalog for pgvector KNN search. */
+model GameCatalogEntry {
+  id               String                       @id @default(cuid())
+  catalogId        String
+  gameExternalId   String
+  gameMetadata     Json
+  searchEmbedding  Unsupported("vector(128)")
+  popularityScore  Float                        @default(0)
+  createdAt        DateTime                     @default(now())
+
+  catalog EmbeddingCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+
+  @@unique([catalogId, gameExternalId])
+  @@index([catalogId])
+  @@map("game_catalog_entries")
+}

@@ -46,6 +46,19 @@ echo ""
 echo -e "${GREEN}✓ Migrations aplicadas.${NC}"
 echo ""
 
+if [[ "${SKIP_INDEX:-}" != "1" ]]; then
+  if [[ -f data/games.cloud.json ]] || [[ -f data/games.normalized.json ]] || [[ -f data/samples/games.sample.json ]]; then
+    echo "→ Indexando catálogo para busca pgvector (game_catalog_entries)..."
+    npm run db:index-embeddings
+    echo ""
+    echo -e "${GREEN}✓ Catálogo indexado. VECTOR_SEARCH_BACKEND=auto usará pgvector.${NC}"
+    echo ""
+  else
+    echo -e "${YELLOW}Pule indexação: rode npm run data:download ou data:cloud, depois npm run db:index-embeddings${NC}"
+    echo ""
+  fi
+fi
+
 if command -v npx >/dev/null 2>&1; then
   echo "→ Criando config Hyperdrive na Cloudflare (proxy até o Postgres)..."
   echo "  (Se não estiver logado: npx wrangler login)"

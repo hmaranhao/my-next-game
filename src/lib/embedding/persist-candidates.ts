@@ -3,10 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { NormalizedGame } from "@/types/game";
 import type { ScoredCandidate } from "@/types/embedding";
 import { vectorToArray } from "./encode";
-
-function toPgVectorLiteral(values: number[]): string {
-  return `[${values.map((v) => Number(v.toFixed(6))).join(",")}]`;
-}
+import { toPgVectorLiteral } from "./vector-utils";
 
 export async function persistCandidateSession(
   profileSnapshotId: string,

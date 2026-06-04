@@ -53,6 +53,7 @@ Tipos: `src/types/game.ts` · loader: `src/lib/game-data.ts`.
 | `npm run build` | Build produção |
 | `docker compose up -d` | Postgres + pgvector |
 | `npm run db:migrate` | Aplica migrations Prisma |
+| `npm run db:index-embeddings` | Indexa catálogo no Postgres (pgvector HNSW) |
 | `npm run db:migrate:dev` | Cria migration em dev |
 | `npm run db:seed` | Seed mínimo |
 | `npm run data:download` | Baixa e normaliza dataset Kaggle |
@@ -63,7 +64,28 @@ Tipos: `src/types/game.ts` · loader: `src/lib/game-data.ts`.
 - `UserProfileSnapshot` — perfil Steam/manual (JSON)
 - `LgpdConsent` — consentimento LGPD (`policyVersion`)
 - `RecommendationSession` — sessão de recomendação
-- `RecommendationCandidate` — candidatos top-50 com `embedding vector(128)`
+- `RecommendationCandidate` — candidatos com `embedding vector(128)` por sessão
+- `EmbeddingCatalog` + `GameCatalogEntry` — catálogo indexado para busca KNN (HNSW)
+
+### Busca vetorial (pgvector)
+
+Por padrão (`VECTOR_SEARCH_BACKEND=auto`), a API usa **pgvector no Postgres** quando o catálogo foi indexado; caso contrário, faz busca em memória sobre o JSON (R2/amostra).
+
+```bash
+npm run data:download          # ~122k jogos (Kaggle)
+npm run db:migrate
+npm run db:index-embeddings    # indexa o catálogo completo no Postgres
+```
+
+Por padrão indexa **todos** os jogos em `data/games.normalized.json`. Para testar com subset: `INDEX_GAME_LIMIT=5000 npm run db:index-embeddings`.
+
+Com índice ativo, a busca escala para ~122k jogos via HNSW no Neon (o Worker só envia o vetor do perfil). O JSON no R2 pode continuar menor (~2k) — só afeta o fallback em memória.
+
+| `VECTOR_SEARCH_BACKEND` | Comportamento |
+|-------------------------|---------------|
+| `auto` | pg se houver catálogo indexado, senão memória |
+| `pg` | Sempre pgvector (fallback memória se vazio) |
+| `memory` | Loop in-memory sobre JSON (dev/demo) |
 
 ## Repositório
 

@@ -14,3 +14,6 @@ VECTOR_DISTANCE=cosine
 VECTOR_TOP_K=150
 VECTOR_PERSIST_TOP_N=20
 VECTOR_FINAL_PICK_TOP_N=10
+
+# auto = pgvector se catálogo indexado (npm run db:index-embeddings), senão memória
+VECTOR_SEARCH_BACKEND=auto

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { loadGamesDataset } from "@/lib/game-data";
 import { getFinalPickTopN, getApiResponseTopN, getPersistTopN } from "@/lib/embedding/config";
 import { getDistanceMetric } from "@/lib/embedding/distance";
-import { findTopGameCandidates } from "@/lib/embedding/search";
+import { findTopGameCandidatesAsync } from "@/lib/embedding/search-service";
 import {
   loadProfileSnapshot,
   persistCandidateSession,
@@ -38,8 +38,14 @@ export async function POST(request: Request) {
 
     const metric = body.metric ?? getDistanceMetric();
     const { games } = await loadGamesDataset();
-    const { queryVector, candidates, contextMeta, profileTags, scoredCount } =
-      findTopGameCandidates(snapshot.profile, games, metric);
+    const {
+      queryVector,
+      candidates,
+      contextMeta,
+      profileTags,
+      scoredCount,
+      searchBackend,
+    } = await findTopGameCandidatesAsync(snapshot.profile, games, metric);
     const ctx = buildEmbeddingContext(games);
     const lookup = buildGameLookup(games);
     const playedGameWeightedVector = encodePlayedLibraryWeightedVector(
@@ -84,6 +90,7 @@ export async function POST(request: Request) {
       catalogGameCount: games.length,
       candidatePoolSize: scoredCount,
       rankedCandidateCount: candidates.length,
+      searchBackend,
       useSampleCatalog: process.env.USE_SAMPLE_GAME_DATA === "true",
       finalPickTopN: getFinalPickTopN(),
       profileTags,

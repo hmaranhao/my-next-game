@@ -74,3 +74,12 @@ export function getFinalPickTopN(): number {
   if (!Number.isFinite(raw) || raw < 1) return Math.min(10, topK);
   return Math.min(raw, topK);
 }
+
+export type VectorSearchBackend = "auto" | "pg" | "memory";
+
+/** Where candidate ranking runs: pgvector KNN in Postgres or in-memory over JSON. */
+export function getVectorSearchBackend(): VectorSearchBackend {
+  const raw = (process.env.VECTOR_SEARCH_BACKEND ?? "auto").toLowerCase();
+  if (raw === "pg" || raw === "memory" || raw === "auto") return raw;
+  return "auto";
+}
