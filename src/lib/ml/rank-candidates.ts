@@ -22,9 +22,9 @@ export type HybridScoredCandidate = RankableCandidate & {
 export const HYBRID_RANK_WEIGHT = 0.9;
 export const HYBRID_TF_WEIGHT = 0.1;
 
-export const MATCH_PERCENT_FLOOR = 62;
-export const MATCH_PERCENT_CEIL = 97;
-const TOP3_MATCH_MIN = [88, 84, 80] as const;
+export const MATCH_PERCENT_FLOOR = 55;
+export const MATCH_PERCENT_CEIL = 92;
+const TOP3_MATCH_MIN = [78, 74, 70] as const;
 
 
 export function minMaxNormalize(values: number[]): number[] {

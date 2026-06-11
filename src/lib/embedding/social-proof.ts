@@ -9,10 +9,10 @@ export type { SocialMetrics };
 export { getSocialMetrics };
 
 /** @deprecated use catalog eligibility — kept for tests/scripts */
-export const SOCIAL_PROOF_MIN_POSITIVE = 500_000;
-export const SOCIAL_PROOF_MIN_RECOMMENDATIONS = 500_000;
-export const SOCIAL_PROOF_INDIE_MIN_POSITIVE = 1_000_000;
-export const SOCIAL_PROOF_INDIE_MIN_RECOMMENDATIONS = 1_000_000;
+export const SOCIAL_PROOF_MIN_POSITIVE = 200_000;
+export const SOCIAL_PROOF_MIN_RECOMMENDATIONS = 200_000;
+export const SOCIAL_PROOF_PUBLISHER_MIN_POSITIVE = 100_000;
+export const SOCIAL_PROOF_PUBLISHER_MIN_RECOMMENDATIONS = 100_000;
 
 /** Catalog is pre-filtered; all indexed games pass this floor. */
 export function passesSocialProofFloor(game: NormalizedGame): boolean {

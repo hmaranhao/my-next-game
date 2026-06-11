@@ -1,10 +1,6 @@
 /** Social proof / catalog eligibility tests */
 
-import {
-  isCatalogEligible,
-  isCasualGame,
-  isIndieLabeledGame,
-} from "./catalog-eligibility.mjs";
+import { isCatalogEligible, isCasualGame } from "./catalog-eligibility.mjs";
 
 function passesSocialProofFloor(game) {
   return isCatalogEligible(game);
@@ -23,8 +19,8 @@ const evilQuest = {
 };
 
 const curatedHit = {
-  positiveReviews: 550_000,
-  recommendations: 520_000,
+  positiveReviews: 250_000,
+  recommendations: 220_000,
   estimatedOwnersMid: 3_000_000,
   genre: "Action",
   tags: ["FPS"],
@@ -63,43 +59,31 @@ if (passesSocialProofFloor(evilQuest)) {
 }
 
 if (!passesSocialProofFloor(curatedHit)) {
-  throw new Error("mega-hit should pass curated floor");
+  throw new Error("established hit should pass curated floor");
 }
 
 if (passesSocialProofFloor(ownersOnly5k)) {
-  throw new Error("1.5M owners + 5k reviews should not pass 500k floor");
+  throw new Error("1.5M owners + 5k reviews should not pass without publisher");
 }
 
 if (passesSocialProofFloor(ownersWithoutSocial)) {
-  throw new Error("2M owners without 500k reviews/recs should not pass");
+  throw new Error("2M owners without social proof should not pass");
 }
 
-const recsOnlyPass = {
-  positiveReviews: 50_000,
-  recommendations: 520_000,
-  estimatedOwnersMid: 1_200_000,
-  genre: "Action",
-  tags: [],
-};
-
-if (!passesSocialProofFloor(recsOnlyPass)) {
-  throw new Error("1.2M owners + 520k recs should pass");
+if (!passesSocialProofFloor(recsOnly)) {
+  throw new Error("1.2M owners + 250k recs should pass");
 }
 
-if (passesSocialProofFloor(recsOnly)) {
-  throw new Error("1.2M owners + 250k recs should not pass 500k floor");
-}
-
-const below500k = {
-  positiveReviews: 450_000,
-  recommendations: 480_000,
+const below200k = {
+  positiveReviews: 180_000,
+  recommendations: 190_000,
   estimatedOwnersMid: 2_000_000,
   genre: "Action",
   tags: [],
 };
 
-if (passesSocialProofFloor(below500k)) {
-  throw new Error("450k/480k should not pass 500k floor");
+if (passesSocialProofFloor(below200k)) {
+  throw new Error("180k/190k should not pass 200k floor");
 }
 
 const casualHit = {
@@ -126,36 +110,34 @@ if (passesSocialProofFloor(casualTagOnly)) {
   throw new Error("Casual tag should be excluded");
 }
 
-const indieBelow1m = {
+const publisherBacked = {
+  positiveReviews: 120_000,
+  recommendations: 80_000,
+  estimatedOwnersMid: 1_500_000,
+  genre: "Action",
+  tags: [],
+  publisher: "Ubisoft Entertainment",
+};
+
+if (!passesSocialProofFloor(publisherBacked)) {
+  throw new Error("major publisher + 120k reviews should pass");
+}
+
+const indieHitNoPublisher = {
   positiveReviews: 800_000,
   recommendations: 900_000,
   estimatedOwnersMid: 1_500_000,
   genre: "Action, Indie",
   tags: [],
+  publisher: "Team Cherry",
 };
 
-if (passesSocialProofFloor(indieBelow1m)) {
-  throw new Error("indie-labeled game below 1M social proof should not pass");
-}
-
-const indieAt1m = {
-  positiveReviews: 1_050_000,
-  recommendations: 200_000,
-  estimatedOwnersMid: 1_500_000,
-  genre: "Action, Indie",
-  tags: [],
-};
-
-if (!passesSocialProofFloor(indieAt1m)) {
-  throw new Error("indie-labeled game with 1M+ reviews should pass");
+if (!passesSocialProofFloor(indieHitNoPublisher)) {
+  throw new Error("800k reviews without major publisher should still pass");
 }
 
 if (!isCasualGame(casualTagOnly)) {
   throw new Error("isCasualGame should detect Casual tag");
-}
-
-if (!isIndieLabeledGame(indieAt1m)) {
-  throw new Error("isIndieLabeledGame should detect Indie genre");
 }
 
 console.log("social proof tests OK");

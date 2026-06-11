@@ -3,6 +3,7 @@ import type { NormalizedUserProfile } from "@/types/profile";
 import type { DistanceMetric } from "@/types/embedding";
 import type { EmbeddingContext } from "./context";
 import {
+  getCoOccurrenceBlend,
   getLastPlayedBlend,
   getOverlapBlend,
   getPopularityBlend,
@@ -10,6 +11,10 @@ import {
   getStudioBlend,
   getTierBlend,
 } from "./config";
+import {
+  computeCoOccurrenceAffinity,
+  type CoOccurrenceIndex,
+} from "./co-occurrence-score";
 import { computeProfileGameOverlap } from "./profile-overlap";
 import { computeMultiAnchorAffinity } from "./last-played";
 import {
@@ -18,11 +23,7 @@ import {
   getTierStudioMultiplier,
 } from "./game-tier";
 import { applyTasteAdjustment, type TasteSignals } from "./taste-signals";
-import {
-  getGamePopularity,
-  getSocialProofMultiplier,
-  passesSocialProofFloor,
-} from "./social-proof";
+import { getGamePopularity, passesSocialProofFloor } from "./social-proof";
 
 export type CandidateRankingContext = {
   profile: NormalizedUserProfile;
@@ -31,6 +32,8 @@ export type CandidateRankingContext = {
   embeddingCtx: EmbeddingContext;
   metric: DistanceMetric;
   anchorCatalogGames: NormalizedGame[];
+  coOccurrenceIndex: CoOccurrenceIndex | null;
+  libraryCoOccurrenceWeights: Map<string, number>;
 };
 
 export function getQualityScore(game: NormalizedGame): number {
@@ -46,6 +49,7 @@ export function computeCandidateRankScore(input: {
   lastPlayedAffinity: number | null;
   tierAffinity: number | null;
   studioAffinity: number | null;
+  coOccurrenceAffinity: number | null;
   game: NormalizedGame;
   anchorGame: NormalizedGame | null;
 }): number {
@@ -55,9 +59,11 @@ export function computeCandidateRankScore(input: {
   const lastPlayedW = input.lastPlayedAffinity != null ? getLastPlayedBlend() : 0;
   const tierW = input.tierAffinity != null ? getTierBlend() : 0;
   const studioW = input.studioAffinity != null ? getStudioBlend() : 0;
+  const coOccW =
+    input.coOccurrenceAffinity != null ? getCoOccurrenceBlend() : 0;
   const tasteW = Math.max(
     0.22,
-    1 - popW - qualityW - lastPlayedW - tierW - studioW,
+    1 - popW - qualityW - lastPlayedW - tierW - studioW - coOccW,
   );
 
   const tasteCore =
@@ -77,8 +83,10 @@ export function computeCandidateRankScore(input: {
   if (input.studioAffinity != null) {
     score += input.studioAffinity * studioW;
   }
+  if (input.coOccurrenceAffinity != null) {
+    score += input.coOccurrenceAffinity * coOccW;
+  }
 
-  score *= getSocialProofMultiplier(input.game);
   score *= getTierStudioMultiplier(input.anchorGame, input.game);
 
   return Math.max(0, Math.min(1, score));
@@ -125,6 +133,15 @@ export function scoreCandidateForRanking(
     ? computeStudioAffinity(primaryAnchor, game)
     : null;
 
+  const coOccurrenceAffinity =
+    ctx.coOccurrenceIndex && ctx.libraryCoOccurrenceWeights.size > 0
+      ? computeCoOccurrenceAffinity(
+          game.id,
+          ctx.libraryCoOccurrenceWeights,
+          ctx.coOccurrenceIndex,
+        )
+      : null;
+
   const base = computeCandidateRankScore({
     vectorScore,
     popularity,
@@ -133,6 +150,7 @@ export function scoreCandidateForRanking(
     lastPlayedAffinity,
     tierAffinity,
     studioAffinity,
+    coOccurrenceAffinity,
     game,
     anchorGame: primaryAnchor,
   });

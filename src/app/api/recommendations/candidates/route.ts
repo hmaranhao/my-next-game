@@ -9,7 +9,10 @@ import {
 } from "@/lib/embedding/persist-candidates";
 import { vectorToArray } from "@/lib/embedding/encode";
 import { buildEmbeddingContext } from "@/lib/embedding/context";
-import { encodePlayedLibraryWeightedVector } from "@/lib/embedding/played-games";
+import {
+  computeLibraryCatalogCoverage,
+  encodePlayedLibraryWeightedVector,
+} from "@/lib/embedding/played-games";
 import { buildGameLookup } from "@/lib/game-lookup";
 import {
   resolveAnchorCatalogGames,
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
       .filter(Boolean);
 
     const metric = body.metric ?? getDistanceMetric();
-    const { games } = await loadGamesDataset();
+    const { games, pairs } = await loadGamesDataset();
     const {
       queryVector,
       candidates,
@@ -65,7 +68,10 @@ export async function POST(request: Request) {
       metric,
       snapshot.id,
       extraRejectIds,
-      { ignoreFeedback: body.ignoreFeedback === true },
+      {
+        ignoreFeedback: body.ignoreFeedback === true,
+        coOccurrencePairs: pairs,
+      },
     );
     const ctx = buildEmbeddingContext(games);
     const lookup = buildGameLookup(games);
@@ -82,6 +88,11 @@ export async function POST(request: Request) {
       snapshot.profile,
       games,
       ctx,
+      lookup,
+    );
+    const libraryCatalogCoverage = computeLibraryCatalogCoverage(
+      snapshot.profile,
+      games,
       lookup,
     );
 
@@ -119,6 +130,7 @@ export async function POST(request: Request) {
       ...result,
       playedGameWeightedVector,
       catalogGameCount: games.length,
+      libraryCatalogCoverage,
       candidatePoolSize: scoredCount,
       rankedCandidateCount: candidates.length,
       searchBackend,

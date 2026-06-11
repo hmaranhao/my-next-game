@@ -1,51 +1,18 @@
 import type { NormalizedGame } from "@/types/game";
 import { getSocialMetrics } from "@/lib/catalog/social-metrics";
+import {
+  hasMajorPublisherHint,
+  normPublisherName,
+} from "@/lib/catalog/publisher-hints";
 
 export type GameProductionTier = "AAA" | "AA" | "INDIE";
 
-const AAA_PUBLISHER_HINTS = new Set([
-  "electronic arts",
-  "ea",
-  "ubisoft",
-  "activision",
-  "bethesda",
-  "rockstar",
-  "square enix",
-  "capcom",
-  "bandai namco",
-  "sony interactive",
-  "microsoft",
-  "xbox game studios",
-  "blizzard",
-  "2k",
-  "warner bros",
-  "take-two",
-  "cd projekt",
-  "fromsoftware",
-  "valve",
-  "epic games",
-  "nintendo",
-  "sega",
-  "koei tecmo",
-  "paradox interactive",
-]);
-
 function normStudio(name: string | null | undefined): string {
-  if (!name?.trim()) return "";
-  return name
-    .toLowerCase()
-    .replace(/\b(inc|llc|ltd|corp|co\.|studios?|games?|entertainment|interactive)\b/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return normPublisherName(name);
 }
 
 function hasAaaPublisherHint(game: NormalizedGame): boolean {
-  const pub = normStudio(game.publisher);
-  if (!pub) return false;
-  for (const hint of AAA_PUBLISHER_HINTS) {
-    if (pub.includes(hint) || hint.includes(pub)) return true;
-  }
-  return false;
+  return hasMajorPublisherHint(game);
 }
 
 /** Classify production scale from owners, reviews and publisher heuristics. */

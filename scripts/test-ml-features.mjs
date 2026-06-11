@@ -11,9 +11,9 @@ function minMaxNormalize(values) {
 
 const RANK_W = 0.9;
 const TF_W = 0.1;
-const MATCH_FLOOR = 62;
-const MATCH_CEIL = 97;
-const TOP3_MIN = [88, 84, 80];
+const MATCH_FLOOR = 55;
+const MATCH_CEIL = 92;
+const TOP3_MIN = [78, 74, 70];
 
 function calibrateToMatchPercents(values) {
   const n = values.length;
@@ -75,8 +75,8 @@ if (pick.gameId !== "rpg-a") {
   throw new Error(`expected rpg-a, got ${pick.gameId}`);
 }
 
-if (pick.matchPercent < 80) {
-  throw new Error(`expected calibrated match >= 80, got ${pick.matchPercent}`);
+if (pick.matchPercent < 78) {
+  throw new Error(`expected calibrated match >= 78, got ${pick.matchPercent}`);
 }
 
 const topThree = [...scored]

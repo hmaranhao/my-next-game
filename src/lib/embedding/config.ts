@@ -46,8 +46,8 @@ export function getDimensionWeights(): Float32Array {
 
 /** How much popularity (reviews / owners) affects final rank 0–1. */
 export function getPopularityBlend(): number {
-  const raw = Number.parseFloat(process.env.POPULARITY_BLEND ?? "0.18");
-  if (!Number.isFinite(raw)) return 0.18;
+  const raw = Number.parseFloat(process.env.POPULARITY_BLEND ?? "0.10");
+  if (!Number.isFinite(raw)) return 0.10;
   return Math.min(0.45, Math.max(0, raw));
 }
 
@@ -65,11 +65,18 @@ export function getQualityBlend(): number {
   return Math.min(0.2, Math.max(0, raw));
 }
 
-/** How much the last-played game steers recommendations (default 0.32). */
+/** How much the last-played game steers recommendations (default 0.30). */
 export function getLastPlayedBlend(): number {
-  const raw = Number.parseFloat(process.env.LAST_PLAYED_BLEND ?? "0.45");
-  if (!Number.isFinite(raw)) return 0.45;
+  const raw = Number.parseFloat(process.env.LAST_PLAYED_BLEND ?? "0.30");
+  if (!Number.isFinite(raw)) return 0.30;
   return Math.min(0.55, Math.max(0, raw));
+}
+
+/** Co-occurrence pairs from the user's library to a candidate. */
+export function getCoOccurrenceBlend(): number {
+  const raw = Number.parseFloat(process.env.CO_OCCURRENCE_BLEND ?? "0.20");
+  if (!Number.isFinite(raw)) return 0.20;
+  return Math.min(0.35, Math.max(0, raw));
 }
 
 /** Production tier (AAA/AA/Indie) match vs anchor game. */

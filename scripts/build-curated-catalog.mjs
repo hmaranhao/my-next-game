@@ -1,5 +1,5 @@
 /**
- * Build curated catalog: owners >= 1M, social proof by label, no Casual.
+ * Build curated catalog: 1M+ owners, 200k+ social proof (or publisher-backed), no Casual.
  *
  * Usage: npm run data:curated
  */

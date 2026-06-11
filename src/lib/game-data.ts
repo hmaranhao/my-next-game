@@ -3,7 +3,11 @@ import sampleGames from "../../data/samples/games.sample.json";
 import samplePairs from "../../data/samples/co-occurrence.sample.json";
 
 const GAMES_PATH = "data/games.normalized.json";
+const CURATED_GAMES_PATH = "data/games.curated.json";
+const CLOUD_GAMES_PATH = "data/games.cloud.json";
 const PAIRS_PATH = "data/co-occurrence.pairs.json";
+const CURATED_PAIRS_PATH = "data/co-occurrence.curated.json";
+const CLOUD_PAIRS_PATH = "data/co-occurrence.cloud.json";
 const CLOUD_GAMES_KEY = "games.cloud.json";
 const CLOUD_PAIRS_KEY = "co-occurrence.cloud.json";
 
@@ -48,13 +52,50 @@ async function loadFromR2(): Promise<{
   }
 }
 
+async function readJsonIfExists(
+  fs: typeof import("node:fs/promises"),
+  filePath: string,
+): Promise<unknown | null> {
+  try {
+    const raw = await fs.readFile(filePath, "utf-8");
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+/** Local dev: cloud/curated payloads align with pgvector INDEX_SOURCE=curated. */
 async function loadFromFilesystem(): Promise<DatasetCache | null> {
   try {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
     const root = process.cwd();
-    const gamesRaw = await fs.readFile(path.join(root, GAMES_PATH), "utf-8");
-    const pairsRaw = await fs.readFile(path.join(root, PAIRS_PATH), "utf-8");
+
+    const games =
+      ((await readJsonIfExists(fs, path.join(root, CLOUD_GAMES_PATH))) as
+        | NormalizedGame[]
+        | null) ??
+      ((await readJsonIfExists(fs, path.join(root, CURATED_GAMES_PATH))) as
+        | NormalizedGame[]
+        | null) ??
+      ((await readJsonIfExists(fs, path.join(root, GAMES_PATH))) as
+        | NormalizedGame[]
+        | null);
+
+    if (!games?.length) return null;
+
+    const pairs =
+      ((await readJsonIfExists(fs, path.join(root, CLOUD_PAIRS_PATH))) as
+        | CoOccurrencePair[]
+        | null) ??
+      ((await readJsonIfExists(fs, path.join(root, CURATED_PAIRS_PATH))) as
+        | CoOccurrencePair[]
+        | null) ??
+      ((await readJsonIfExists(fs, path.join(root, PAIRS_PATH))) as
+        | CoOccurrencePair[]
+        | null) ??
+      (samplePairs as CoOccurrencePair[]);
+
     let manifest: GamesDatasetManifest | null = null;
     try {
       const manifestRaw = await fs.readFile(path.join(root, "data/manifest.json"), "utf-8");
@@ -62,11 +103,8 @@ async function loadFromFilesystem(): Promise<DatasetCache | null> {
     } catch {
       manifest = null;
     }
-    return {
-      games: JSON.parse(gamesRaw) as NormalizedGame[],
-      pairs: JSON.parse(pairsRaw) as CoOccurrencePair[],
-      manifest,
-    };
+
+    return { games, pairs, manifest };
   } catch {
     return null;
   }

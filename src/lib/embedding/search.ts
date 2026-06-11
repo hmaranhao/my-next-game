@@ -11,9 +11,12 @@ import { getCandidateTopK, getFinalPickTopN } from "./config";
 import { scoreCandidateForRanking } from "./candidate-ranking";
 import { resolveAnchorCatalogGames } from "./last-played";
 import {
-  collectLibraryCatalogMatches,
+  buildLibraryCoOccurrenceWeights,
+  collectProfileQueryLibraryMatches,
   collectProfileTags,
 } from "./played-games";
+import { buildCoOccurrenceIndex } from "./co-occurrence-score";
+import type { CoOccurrencePair } from "@/types/game";
 import { buildGameLookup, enrichCatalogGame } from "@/lib/game-lookup";
 import {
   buildTasteSignals,
@@ -148,6 +151,7 @@ export function findTopGameCandidates(
   metric: DistanceMetric,
   feedback: StoredFeedback[] = [],
   extraRejectIds: string[] = [],
+  coOccurrencePairs: CoOccurrencePair[] = [],
 ): {
   queryVector: Float32Array;
   candidates: ScoredCandidate[];
@@ -158,13 +162,26 @@ export function findTopGameCandidates(
 } {
   const ctx = buildEmbeddingContext(games);
   const lookup = buildGameLookup(games);
-  const libraryMatches = collectLibraryCatalogMatches(profile, games, lookup);
+  const libraryMatches = collectProfileQueryLibraryMatches(
+    profile,
+    games,
+    lookup,
+  );
   const profileTags = collectProfileTags(profile, games, lookup);
   const queryVector = encodeProfileVectorFromLibrary(
     profile,
     ctx,
     libraryMatches,
     profileTags,
+  );
+  const coOccurrenceIndex =
+    coOccurrencePairs.length > 0
+      ? buildCoOccurrenceIndex(coOccurrencePairs)
+      : null;
+  const libraryCoOccurrenceWeights = buildLibraryCoOccurrenceWeights(
+    profile,
+    games,
+    lookup,
   );
   const playedNames = buildPlayedNameSet(profile);
   const playedAppIds = buildPlayedAppIdSet(profile);
@@ -182,6 +199,8 @@ export function findTopGameCandidates(
     embeddingCtx: ctx,
     metric,
     anchorCatalogGames,
+    coOccurrenceIndex,
+    libraryCoOccurrenceWeights,
   };
 
   const topK = getCandidateTopK();

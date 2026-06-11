@@ -13,6 +13,7 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:index-embeddings": "tsx scripts/index-game-embeddings.ts",
+    "db:reindex-curated": "npm run data:curated && INDEX_SOURCE=curated npm run db:index-embeddings",
     "db:prune-catalogs": "tsx scripts/prune-embedding-catalogs.ts",
     "db:index-embeddings:full": "tsx scripts/index-game-embeddings.ts",
     "db:studio": "prisma studio",

@@ -1,4 +1,4 @@
-import type { NormalizedGame } from "@/types/game";
+import type { CoOccurrencePair, NormalizedGame } from "@/types/game";
 import type { NormalizedUserProfile } from "@/types/profile";
 import type { DistanceMetric, ScoredCandidate } from "@/types/embedding";
 import { getVectorSearchBackend } from "./config";
@@ -27,8 +27,12 @@ export async function findTopGameCandidatesAsync(
   metric: DistanceMetric,
   profileSnapshotId: string,
   extraRejectIds: string[] = [],
-  options?: { ignoreFeedback?: boolean },
+  options?: {
+    ignoreFeedback?: boolean;
+    coOccurrencePairs?: CoOccurrencePair[];
+  },
 ): Promise<CandidateSearchOutcome & { rejectedGameIds: string[] }> {
+  const coOccurrencePairs = options?.coOccurrencePairs ?? [];
   const feedback = options?.ignoreFeedback
     ? []
     : await loadFeedbackForProfile(profileSnapshotId, profile);
@@ -50,6 +54,7 @@ export async function findTopGameCandidatesAsync(
       metric,
       feedback,
       extraRejectIds,
+      coOccurrencePairs,
     );
     if (pgResult) return { ...pgResult, rejectedGameIds };
   }
@@ -60,6 +65,7 @@ export async function findTopGameCandidatesAsync(
     metric,
     feedback,
     extraRejectIds,
+    coOccurrencePairs,
   );
   return { ...memory, searchBackend: "memory", rejectedGameIds };
 }

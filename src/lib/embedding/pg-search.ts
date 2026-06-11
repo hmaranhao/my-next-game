@@ -9,9 +9,12 @@ import { scoreCandidateForRanking } from "./candidate-ranking";
 import { resolveAnchorCatalogGames } from "./last-played";
 import { loadActiveEmbeddingCatalog } from "./catalog";
 import {
-  collectLibraryCatalogMatches,
+  buildLibraryCoOccurrenceWeights,
+  collectProfileQueryLibraryMatches,
   collectProfileTags,
 } from "./played-games";
+import { buildCoOccurrenceIndex } from "./co-occurrence-score";
+import type { CoOccurrencePair } from "@/types/game";
 import { buildGameLookup, enrichCatalogGame } from "@/lib/game-lookup";
 import { applySearchWeights, toPgVectorLiteral } from "./vector-utils";
 import {
@@ -40,6 +43,7 @@ export async function findTopGameCandidatesPg(
   metric: DistanceMetric,
   feedback: StoredFeedback[] = [],
   extraRejectIds: string[] = [],
+  coOccurrencePairs: CoOccurrencePair[] = [],
 ): Promise<{
   queryVector: Float32Array;
   candidates: ScoredCandidate[];
@@ -55,13 +59,26 @@ export async function findTopGameCandidatesPg(
 
     const ctx = catalog.context;
     const lookup = buildGameLookup(games);
-    const libraryMatches = collectLibraryCatalogMatches(profile, games, lookup);
+    const libraryMatches = collectProfileQueryLibraryMatches(
+      profile,
+      games,
+      lookup,
+    );
     const profileTags = collectProfileTags(profile, games, lookup);
     const queryVector = encodeProfileVectorFromLibrary(
       profile,
       ctx,
       libraryMatches,
       profileTags,
+    );
+    const coOccurrenceIndex =
+      coOccurrencePairs.length > 0
+        ? buildCoOccurrenceIndex(coOccurrencePairs)
+        : null;
+    const libraryCoOccurrenceWeights = buildLibraryCoOccurrenceWeights(
+      profile,
+      games,
+      lookup,
     );
 
     const playedNames = buildPlayedNameSet(profile);
@@ -80,6 +97,8 @@ export async function findTopGameCandidatesPg(
       embeddingCtx: ctx,
       metric,
       anchorCatalogGames,
+      coOccurrenceIndex,
+      libraryCoOccurrenceWeights,
     };
     const playedExcludeIds = [...new Set([...playedAppIds].map(String))];
 

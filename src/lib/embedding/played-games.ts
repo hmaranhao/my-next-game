@@ -25,6 +25,8 @@ export type LibraryCatalogMatch = {
 };
 
 const FALLBACK_LIBRARY_LIMIT = 10;
+/** Extra weight for 10h+ titles when building the full-library query vector. */
+const MEANINGFUL_PLAYTIME_BOOST = 1.65;
 
 /** Unified library source: full Steam library when available, else top + recent. */
 export function getProfileLibraryEntries(
@@ -156,8 +158,44 @@ export function resolveLastPlayedEntry(
   );
 }
 
-/** Query vector built from 10h+ games; fallback to top playtime if none. */
-export function collectLibraryCatalogMatches(
+/**
+ * Full playtime-weighted library for profile query vector and co-occurrence.
+ * 10h+ titles get a boost; recent session still nudged via entryPlaytimeWeight.
+ */
+export function collectProfileQueryLibraryMatches(
+  profile: NormalizedUserProfile,
+  games: NormalizedGame[],
+  lookup: GameLookup,
+  limit = LIBRARY_ENCODE_LIMIT,
+): LibraryCatalogMatch[] {
+  const entries = getProfileLibraryEntries(profile).filter(
+    (e) => e.playtimeMinutes > 0,
+  );
+  const seenAppIds = new Set<number>();
+  const matches: LibraryCatalogMatch[] = [];
+
+  for (const entry of entries) {
+    if (matches.length >= limit) break;
+    if (entry.appId > 0 && seenAppIds.has(entry.appId)) continue;
+    const game = findCatalogGame(entry.name, entry.appId, lookup, games);
+    if (!game) continue;
+    if (entry.appId > 0) seenAppIds.add(entry.appId);
+
+    let weight = entryPlaytimeWeight(entry);
+    if (hasMeaningfulAnchorPlaytime(entry)) {
+      weight *= MEANINGFUL_PLAYTIME_BOOST;
+    }
+
+    matches.push({ entry, game, weight });
+  }
+
+  if (matches.length) return matches;
+
+  return collectAnchorLibraryCatalogMatches(profile, games, lookup, limit);
+}
+
+/** 10h+ anchors only — used when the full library has no catalog matches. */
+export function collectAnchorLibraryCatalogMatches(
   profile: NormalizedUserProfile,
   games: NormalizedGame[],
   lookup: GameLookup,
@@ -204,6 +242,66 @@ export function collectLibraryCatalogMatches(
   return matches;
 }
 
+/** @deprecated Use collectProfileQueryLibraryMatches for query vectors. */
+export function collectLibraryCatalogMatches(
+  profile: NormalizedUserProfile,
+  games: NormalizedGame[],
+  lookup: GameLookup,
+  limit = LIBRARY_ENCODE_LIMIT,
+): LibraryCatalogMatch[] {
+  return collectProfileQueryLibraryMatches(profile, games, lookup, limit);
+}
+
+export function buildLibraryCoOccurrenceWeights(
+  profile: NormalizedUserProfile,
+  games: NormalizedGame[],
+  lookup: GameLookup,
+  limit = LIBRARY_ENCODE_LIMIT,
+): Map<string, number> {
+  const weights = new Map<string, number>();
+  for (const match of collectProfileQueryLibraryMatches(
+    profile,
+    games,
+    lookup,
+    limit,
+  )) {
+    weights.set(
+      match.game.id,
+      (weights.get(match.game.id) ?? 0) + match.weight,
+    );
+  }
+  return weights;
+}
+
+/** How many of the user's top-played games exist in the recommendation catalog. */
+export function computeLibraryCatalogCoverage(
+  profile: NormalizedUserProfile,
+  games: NormalizedGame[],
+  lookup: GameLookup,
+  sampleSize = 10,
+): { matched: number; sampled: number; ratio: number } {
+  const entries = getProfileLibraryEntries(profile)
+    .filter((e) => e.playtimeMinutes > 0)
+    .slice(0, sampleSize);
+
+  if (!entries.length) {
+    return { matched: 0, sampled: 0, ratio: 1 };
+  }
+
+  let matched = 0;
+  for (const entry of entries) {
+    if (findCatalogGame(entry.name, entry.appId, lookup, games)) {
+      matched += 1;
+    }
+  }
+
+  return {
+    matched,
+    sampled: entries.length,
+    ratio: matched / entries.length,
+  };
+}
+
 /** Weighted average of library game vectors for TF.js user encoding. */
 export function encodePlayedLibraryWeightedVector(
   profile: NormalizedUserProfile,
@@ -212,7 +310,12 @@ export function encodePlayedLibraryWeightedVector(
   lookup: GameLookup,
   limit = TF_LIBRARY_VECTOR_LIMIT,
 ): number[] | null {
-  const matches = collectLibraryCatalogMatches(profile, games, lookup, limit);
+  const matches = collectProfileQueryLibraryMatches(
+    profile,
+    games,
+    lookup,
+    limit,
+  );
   if (!matches.length) return null;
 
   const vectors = matches.map((m) =>
@@ -231,7 +334,12 @@ export function encodePlayedLibraryVectors(
   lookup: GameLookup,
   limit = TF_LIBRARY_VECTOR_LIMIT,
 ): number[][] {
-  const matches = collectLibraryCatalogMatches(profile, games, lookup, limit);
+  const matches = collectProfileQueryLibraryMatches(
+    profile,
+    games,
+    lookup,
+    limit,
+  );
   return matches.map((m) => vectorToArray(encodeGameVector(m.game, ctx)));
 }
 
@@ -243,7 +351,7 @@ export function collectProfileTags(
   limit = 24,
 ): string[] {
   const tagWeights = new Map<string, number>();
-  const matches = collectLibraryCatalogMatches(
+  const matches = collectProfileQueryLibraryMatches(
     profile,
     games,
     lookup,
