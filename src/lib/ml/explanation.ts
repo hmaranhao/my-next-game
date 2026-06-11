@@ -1,7 +1,14 @@
 import type { NormalizedGame } from "@/types/game";
 import type { NormalizedUserProfile } from "@/types/profile";
-import { resolveLastPlayedEntry } from "@/lib/embedding/last-played";
-import { splitGenreTokens } from "@/lib/embedding/genre-utils";
+import {
+  resolveLastPlayedEntry,
+  resolveMeaningful10hAnchors,
+} from "@/lib/embedding/last-played";
+import {
+  collectGameGenres,
+  collectGameplayTags,
+  normMetadataToken,
+} from "@/lib/embedding/steam-metadata-utils";
 import {
   classifyGameTier,
   type GameProductionTier,
@@ -20,6 +27,22 @@ const TIER_LABELS: Record<GameProductionTier, string> = {
   INDIE: "indie",
 };
 
+function formatAnchorNames(profile: NormalizedUserProfile): string {
+  const anchors = resolveMeaningful10hAnchors(profile, 3);
+  if (anchors.length >= 2) {
+    return anchors
+      .slice(0, 2)
+      .map((a) => a.name)
+      .join(", ");
+  }
+  return (
+    resolveLastPlayedEntry(profile)?.name ??
+    profile.topGames[0]?.name ??
+    profile.playedGameNames[0] ??
+    ""
+  );
+}
+
 /** Template-based explanation for i18n (pt-BR / en-US). */
 export function buildRecommendationExplanation(
   profile: NormalizedUserProfile,
@@ -29,11 +52,8 @@ export function buildRecommendationExplanation(
   anchorTier?: GameProductionTier | null,
 ): ExplanationPayload {
   const pool = candidatePoolSize;
-  const lastPlayed =
-    resolveLastPlayedEntry(profile)?.name ??
-    profile.topGames[0]?.name ??
-    profile.playedGameNames[0] ??
-    "";
+  const anchorNames = formatAnchorNames(profile);
+  const lastPlayed = resolveLastPlayedEntry(profile)?.name ?? anchorNames;
 
   const candidateTier = classifyGameTier(game);
   const tierMatch =
@@ -50,6 +70,18 @@ export function buildRecommendationExplanation(
     };
   }
 
+  const anchors = resolveMeaningful10hAnchors(profile, 2);
+  if (anchors.length >= 2 && anchorNames) {
+    return {
+      explanationKey: "recommendation.explainMultiAnchor",
+      explanationValues: {
+        game: game.name,
+        played: anchorNames,
+        match: matchPercent,
+      },
+    };
+  }
+
   if (tierMatch && lastPlayed) {
     return {
       explanationKey: "recommendation.explainTierMatch",
@@ -62,13 +94,14 @@ export function buildRecommendationExplanation(
     };
   }
 
+  const candidateGenres = new Set(collectGameGenres(game));
   const sharedGenre = profile.inferredGenres.find((g) =>
-    splitGenreTokens(game.genre).some(
-      (gt) => gt.toLowerCase() === g.toLowerCase(),
-    ),
+    candidateGenres.has(normMetadataToken(g)),
   );
-  const sharedTag = (profile.steamTags ?? []).find((tag) =>
-    game.tags.some((t) => t.toLowerCase() === tag.toLowerCase()),
+  const sharedTag = collectGameplayTags(game).find((tag) =>
+    (profile.steamTags ?? []).some(
+      (profileTag) => normMetadataToken(profileTag) === tag,
+    ),
   );
 
   if (lastPlayed) {
@@ -82,6 +115,17 @@ export function buildRecommendationExplanation(
     };
   }
 
+  if (sharedGenre) {
+    return {
+      explanationKey: "recommendation.explainGenre",
+      explanationValues: {
+        genre: sharedGenre,
+        game: game.name,
+        match: matchPercent,
+      },
+    };
+  }
+
   if (sharedTag) {
     return {
       explanationKey: "recommendation.explainTagAndHistory",
@@ -89,17 +133,6 @@ export function buildRecommendationExplanation(
         tag: sharedTag,
         game: game.name,
         played: lastPlayed,
-        match: matchPercent,
-      },
-    };
-  }
-
-  if (sharedGenre) {
-    return {
-      explanationKey: "recommendation.explainGenre",
-      explanationValues: {
-        genre: sharedGenre,
-        game: game.name,
         match: matchPercent,
       },
     };

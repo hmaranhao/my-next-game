@@ -9,14 +9,12 @@ import {
 import { scoreVectors } from "./distance";
 import { getCandidateTopK, getFinalPickTopN } from "./config";
 import { scoreCandidateForRanking } from "./candidate-ranking";
-import type { SocialProofFloorMode } from "./social-proof";
-import { enrichCatalogGame } from "@/lib/game-lookup";
-import { resolveLastPlayedCatalogGame } from "./last-played";
+import { resolveAnchorCatalogGames } from "./last-played";
 import {
   collectLibraryCatalogMatches,
   collectProfileTags,
 } from "./played-games";
-import { buildGameLookup } from "@/lib/game-lookup";
+import { buildGameLookup, enrichCatalogGame } from "@/lib/game-lookup";
 import {
   buildTasteSignals,
   mergeRejectedGameIds,
@@ -92,6 +90,7 @@ type ScoredDraft = {
   popularityScore: number;
   score: number;
   distance: number;
+  anchorAffinity: number;
 };
 
 export type { ScoredDraft };
@@ -138,6 +137,7 @@ export function finalizeCandidatesFromDrafts(
         popularityScore: d.popularityScore,
         score: d.score,
         distance: d.distance,
+        anchorAffinity: d.anchorAffinity,
       };
     });
 }
@@ -170,7 +170,7 @@ export function findTopGameCandidates(
   const playedAppIds = buildPlayedAppIdSet(profile);
   const taste = buildTasteSignals(profile, games, lookup, feedback);
   const rejectedIds = mergeRejectedGameIds(feedback, extraRejectIds);
-  const lastPlayedCatalogGame = resolveLastPlayedCatalogGame(
+  const anchorCatalogGames = resolveAnchorCatalogGames(
     profile,
     games,
     lookup,
@@ -181,18 +181,15 @@ export function findTopGameCandidates(
     taste,
     embeddingCtx: ctx,
     metric,
-    lastPlayedCatalogGame,
+    anchorCatalogGames,
   };
 
   const topK = getCandidateTopK();
-  const minCandidates = Math.min(getFinalPickTopN(), topK);
   const heap: ScoredDraft[] = [];
   const seenIds = new Set<string>();
   let scoredCount = 0;
 
-  const floorModes: SocialProofFloorMode[] = ["strict", "relaxed", "emergency"];
-
-  function tryScoreGame(game: NormalizedGame, floor: SocialProofFloorMode) {
+  function tryScoreGame(game: NormalizedGame) {
     if (isGameAlreadyPlayed(game, playedNames, playedAppIds)) return;
     if (rejectedIds.has(game.id)) return;
     if (seenIds.has(game.id)) return;
@@ -204,12 +201,7 @@ export function findTopGameCandidates(
       gameVector,
       metric,
     );
-    const scored = scoreCandidateForRanking(
-      enriched,
-      vectorScore,
-      rankingCtx,
-      { floor },
-    );
+    const scored = scoreCandidateForRanking(enriched, vectorScore, rankingCtx);
     if (!scored) return;
 
     seenIds.add(game.id);
@@ -223,31 +215,16 @@ export function findTopGameCandidates(
         popularityScore: scored.popularityScore,
         score: scored.rankScore,
         distance,
+        anchorAffinity: scored.anchorAffinity,
       },
       topK,
     );
     scoredCount += 1;
   }
 
-  for (const floor of floorModes) {
+  for (const game of games) {
     if (heap.length >= topK) break;
-    for (const game of games) {
-      if (heap.length >= topK) break;
-      tryScoreGame(game, floor);
-    }
-  }
-
-  if (heap.length < minCandidates) {
-    const byPopularity = [...games].sort(
-      (a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0),
-    );
-    for (const floor of floorModes) {
-      if (heap.length >= topK) break;
-      for (const game of byPopularity.slice(0, 1500)) {
-        if (heap.length >= topK) break;
-        tryScoreGame(game, floor);
-      }
-    }
+    tryScoreGame(game);
   }
 
   const candidates = finalizeCandidates(heap, queryVector);

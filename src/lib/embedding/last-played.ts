@@ -4,48 +4,66 @@ import type { DistanceMetric } from "@/types/embedding";
 import type { EmbeddingContext } from "./context";
 import { encodeGameVector } from "./encode";
 import { scoreVectors } from "./distance";
-import { splitGenreTokens } from "./genre-utils";
 import { findCatalogGame, type GameLookup } from "@/lib/game-lookup";
-import { resolveLastPlayedEntry } from "./played-games";
+import {
+  collectAnchorGenres,
+  collectGameGenres,
+  computeGameplayTagOverlap,
+  computeGenreOverlapScore,
+} from "./steam-metadata-utils";
+import {
+  resolveLastPlayedEntry,
+  resolveMeaningful10hAnchors,
+} from "./played-games";
 
 export function resolveLastPlayedCatalogGame(
   profile: NormalizedUserProfile,
   games: NormalizedGame[],
   lookup: GameLookup,
 ): NormalizedGame | null {
-  const entry = resolveLastPlayedEntry(profile);
-  if (!entry) return null;
-  return findCatalogGame(entry.name, entry.appId, lookup, games);
+  const anchors = resolveAnchorCatalogGames(profile, games, lookup);
+  return anchors[0] ?? null;
 }
 
-function normTag(tag: string): string {
-  return tag.trim().toLowerCase();
+export function resolveAnchorCatalogGames(
+  profile: NormalizedUserProfile,
+  games: NormalizedGame[],
+  lookup: GameLookup,
+): NormalizedGame[] {
+  const entries = resolveMeaningful10hAnchors(profile, 5);
+  const catalogGames: NormalizedGame[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of entries) {
+    const game = findCatalogGame(entry.name, entry.appId, lookup, games);
+    if (!game || seen.has(game.id)) continue;
+    seen.add(game.id);
+    catalogGames.push(game);
+  }
+
+  return catalogGames;
 }
 
-/** Tag/genre overlap between two catalog games. */
+/** Genre overlap between two catalog games (Steam genres only). */
+export function computeGameToGameGenreOverlap(
+  anchor: NormalizedGame,
+  candidate: NormalizedGame,
+): number {
+  return computeGenreOverlapScore(
+    new Set(collectGameGenres(anchor)),
+    collectGameGenres(candidate),
+  );
+}
+
+/** @deprecated Use computeGameToGameGenreOverlap — kept for tests/scripts. */
 export function computeGameToGameOverlap(
   anchor: NormalizedGame,
   candidate: NormalizedGame,
 ): number {
-  const anchorTags = new Set<string>();
-  for (const tag of anchor.tags) anchorTags.add(normTag(tag));
-  for (const g of splitGenreTokens(anchor.genre)) anchorTags.add(normTag(g));
-
-  const candidateTags = new Set<string>();
-  for (const tag of candidate.tags) candidateTags.add(normTag(tag));
-  for (const g of splitGenreTokens(candidate.genre)) candidateTags.add(normTag(g));
-
-  if (!anchorTags.size || !candidateTags.size) return 0;
-
-  let shared = 0;
-  for (const t of candidateTags) {
-    if (anchorTags.has(t)) shared += 1;
-  }
-
-  return Math.min(1, shared / Math.max(2, Math.min(anchorTags.size, 10) * 0.45));
+  return computeGameToGameGenreOverlap(anchor, candidate);
 }
 
-/** How similar a candidate is to what the player just played (vector + tags). */
+/** How similar a candidate is to a 10h+ anchor (genre-first). */
 export function computeLastPlayedAffinity(
   candidate: NormalizedGame,
   lastPlayed: NormalizedGame,
@@ -55,8 +73,46 @@ export function computeLastPlayedAffinity(
   const lastVec = encodeGameVector(lastPlayed, ctx);
   const candVec = encodeGameVector(candidate, ctx);
   const { score: vectorSim } = scoreVectors(lastVec, candVec, metric);
-  const tagOverlap = computeGameToGameOverlap(lastPlayed, candidate);
-  return Math.min(1, vectorSim * 0.5 + tagOverlap * 0.5);
+  const genreOverlap = computeGameToGameGenreOverlap(lastPlayed, candidate);
+  const tagOverlap = computeGameplayTagOverlap(lastPlayed, candidate);
+
+  if (genreOverlap === 0) {
+    return Math.min(1, vectorSim * 0.15 + tagOverlap * 0.1);
+  }
+
+  return Math.min(1, vectorSim * 0.2 + genreOverlap * 0.7 + tagOverlap * 0.1);
 }
 
-export { resolveLastPlayedEntry } from "./played-games";
+/** Best affinity across multiple 10h+ anchors (recent anchors weighted higher). */
+export function computeMultiAnchorAffinity(
+  candidate: NormalizedGame,
+  anchors: NormalizedGame[],
+  ctx: EmbeddingContext,
+  metric: DistanceMetric,
+): number {
+  if (!anchors.length) return 0;
+
+  const anchorGenres = collectAnchorGenres(anchors);
+  const genreOverlap = computeGenreOverlapScore(
+    anchorGenres,
+    collectGameGenres(candidate),
+  );
+
+  let best = 0;
+  anchors.forEach((anchor, index) => {
+    const affinity = computeLastPlayedAffinity(candidate, anchor, ctx, metric);
+    const recencyBoost = index === 0 ? 1.2 : 1;
+    best = Math.max(best, Math.min(1, affinity * recencyBoost));
+  });
+
+  if (genreOverlap === 0) {
+    return best * 0.35;
+  }
+
+  return Math.max(best, Math.min(1, genreOverlap * 0.85 + best * 0.15));
+}
+
+export {
+  resolveLastPlayedEntry,
+  resolveMeaningful10hAnchors,
+} from "./played-games";

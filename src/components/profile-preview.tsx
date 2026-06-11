@@ -13,8 +13,22 @@ import {
   runRecommendationInWorker,
   type WorkerMessage,
 } from "@/lib/ml/worker-client";
+import {
+  TfTrainingDrawer,
+  type TrainingLogEntry,
+} from "@/components/tf-training-drawer";
+import {
+  loadPersistedTrainingLogs,
+  persistTrainingLogs,
+} from "@/lib/ml/training-log-store";
 import type { NormalizedGame } from "@/types/game";
 import type { NormalizedUserProfile } from "@/types/profile";
+
+type AnchorGamePreview = {
+  name: string;
+  playtimeHours: number;
+  tier: "AAA" | "AA" | "INDIE" | null;
+};
 
 const VISIBLE_CANDIDATES = 3;
 
@@ -54,6 +68,7 @@ type CandidatePreview = {
   score: number;
   vectorScore?: number;
   popularityScore?: number;
+  anchorAffinity?: number;
   gameVector: number[];
   metadata: NormalizedGame;
   matchPercent?: number;
@@ -127,6 +142,12 @@ export function ProfilePreview({
     null,
   );
   const [showRetryCandidates, setShowRetryCandidates] = useState(false);
+  const [anchorGames, setAnchorGames] = useState<AnchorGamePreview[]>([]);
+  const [trainingLogs, setTrainingLogs] = useState<TrainingLogEntry[]>([]);
+  const [modelFromCache, setModelFromCache] = useState(false);
+  const [trainingDrawerOpen, setTrainingDrawerOpen] = useState(false);
+
+  const showTrainingButton = trainingLogs.length > 0;
 
   const chosenCandidate = candidates.find((c) => c.gameId === pickedGameId);
   const chosenMatchPercent = chosenCandidate?.matchPercent ?? null;
@@ -183,6 +204,10 @@ export function ProfilePreview({
       setShowAllCandidates,
     });
     setAnchorTier(null);
+    setAnchorGames([]);
+    setTrainingLogs([]);
+    setModelFromCache(false);
+    setTrainingDrawerOpen(false);
     setShowRetryCandidates(false);
 
     try {
@@ -259,6 +284,9 @@ export function ProfilePreview({
       const resolvedAnchorTier =
         (json.anchorTier as "AAA" | "AA" | "INDIE" | null | undefined) ?? null;
       setAnchorTier(resolvedAnchorTier);
+      setAnchorGames(
+        (json.anchorGames as AnchorGamePreview[] | undefined) ?? [],
+      );
 
       const training = await fetchTrainingPayload();
       if (cancelled()) return;
@@ -294,6 +322,7 @@ export function ProfilePreview({
         vectorScore: c.vectorScore ?? c.score,
         rankScore: c.score,
         popularityScore: c.popularityScore ?? c.metadata?.popularityScore ?? 0,
+        anchorAffinity: c.anchorAffinity,
       }));
 
       const metadataById = new Map(finalPool.map((c) => [c.gameId, c.metadata]));
@@ -311,8 +340,29 @@ export function ProfilePreview({
           if (msg.type === WORKER_EVENTS.progress) {
             setTrainProgress(msg.progress);
           }
+          if (msg.type === WORKER_EVENTS.modelCached) {
+            setModelFromCache(true);
+            setTrainingLogs((prev) => {
+              if (prev.length) return prev;
+              return loadPersistedTrainingLogs();
+            });
+          }
           if (msg.type === WORKER_EVENTS.trainingLog) {
+            setModelFromCache(false);
             setTrainingEpoch(msg.epoch + 1);
+            setTrainingLogs((prev) => {
+              const next = [
+                ...prev,
+                {
+                  epoch: msg.epoch,
+                  loss: msg.loss,
+                  accuracy: msg.accuracy ?? 0,
+                },
+              ];
+              persistTrainingLogs(next);
+              return next;
+            });
+            setTrainingDrawerOpen(true);
           }
           if (msg.type === WORKER_EVENTS.complete) {
             const tfMap = new Map(
@@ -471,7 +521,30 @@ export function ProfilePreview({
             <p className="mt-1 text-sm">{profile.inferredGenres.join(" · ")}</p>
           </div>
         ) : null}
-        {profile.lastPlayedGame ? (
+        {anchorGames.length > 0 ? (
+          <div className="mt-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t("home.anchorGamesTitle")}
+            </p>
+            <ul className="mt-1 space-y-1">
+              {anchorGames.map((anchor) => (
+                <li key={anchor.name} className="text-sm font-medium">
+                  {anchor.name}
+                  {anchor.playtimeHours > 0 ? (
+                    <span className="ml-2 font-normal text-muted-foreground">
+                      {t("home.lastPlayedHours", { hours: anchor.playtimeHours })}
+                    </span>
+                  ) : null}
+                  {anchor.tier ? (
+                    <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+                      {t("home.lastPlayedTier", { tier: anchor.tier })}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : profile.lastPlayedGame ? (
           <div className="mt-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               {t("home.lastPlayed")}
@@ -483,11 +556,6 @@ export function ProfilePreview({
                   {t("home.lastPlayedHours", {
                     hours: profile.lastPlayedGame.playtimeHours,
                   })}
-                </span>
-              ) : null}
-              {anchorTier ? (
-                <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-                  {t("home.lastPlayedTier", { tier: anchorTier })}
                 </span>
               ) : null}
             </p>
@@ -595,6 +663,16 @@ export function ProfilePreview({
 
       <div className="space-y-3">
         <p className="text-sm font-medium">{t("recommendation.title")}</p>
+        {showTrainingButton ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setTrainingDrawerOpen(true)}
+          >
+            {t("recommendation.openTrainingDrawer")}
+          </Button>
+        ) : null}
         {trainProgress != null && trainProgress < 100 && !pickedGame ? (
           <div className="space-y-2 rounded-xl border border-border bg-card/60 p-4">
             <p className="text-xs text-muted-foreground">
@@ -678,6 +756,14 @@ export function ProfilePreview({
           <p className="text-xs text-muted-foreground">{t("recommendation.waiting")}</p>
         ) : null}
       </div>
+
+      <TfTrainingDrawer
+        open={trainingDrawerOpen}
+        onOpenChange={setTrainingDrawerOpen}
+        logs={trainingLogs}
+        modelFromCache={modelFromCache}
+        isTraining={trainProgress != null && trainProgress < 100}
+      />
     </div>
   );
 }

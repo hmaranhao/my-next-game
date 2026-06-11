@@ -66,17 +66,16 @@ export function encodeProfileVector(
     profile.inferredGenres,
     W.profileGenre,
   );
-  setMultiHot(
-    vec,
-    L.tagStart,
-    L.tagSize,
-    ctx.tagIndex,
-    profile.inferredGenres,
-    W.profileTag * 0.65,
-  );
   setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profileTags, W.profileTag);
   if (profile.steamTags?.length) {
-    setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profile.steamTags, W.profileTag * 1.1);
+    setMultiHot(
+      vec,
+      L.tagStart,
+      L.tagSize,
+      ctx.tagIndex,
+      profile.steamTags,
+      W.profileTag * 0.45,
+    );
   }
 
   if (profile.source === "STEAM") {
@@ -128,9 +127,9 @@ export function encodeProfileVectorFromLibrary(
   }
 
   const W = ENCODE_WEIGHTS;
-  setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profileTags, W.profileTag * 0.4);
+  setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profileTags, W.profileTag * 0.5);
   if (profile.steamTags?.length) {
-    setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profile.steamTags, W.profileTag * 0.9);
+    setMultiHot(vec, L.tagStart, L.tagSize, ctx.tagIndex, profile.steamTags, W.profileTag * 0.35);
   }
 
   if (profile.source === "STEAM") {

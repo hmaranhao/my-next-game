@@ -1,70 +1,30 @@
 import type { NormalizedGame } from "@/types/game";
+import { isCatalogEligible } from "@/lib/catalog/eligibility";
+import {
+  getSocialMetrics,
+  type SocialMetrics,
+} from "@/lib/catalog/social-metrics";
 
-export type SocialMetrics = {
-  positive: number;
-  recommendations: number;
-  ownersMid: number;
-};
+export type { SocialMetrics };
+export { getSocialMetrics };
 
-/** Minimum reviews / recommendations for recommendation pool (default 5k). */
-export const SOCIAL_PROOF_MIN_POSITIVE = 5_000;
-export const SOCIAL_PROOF_MIN_RECOMMENDATIONS = 5_000;
+/** @deprecated use catalog eligibility — kept for tests/scripts */
+export const SOCIAL_PROOF_MIN_POSITIVE = 500_000;
+export const SOCIAL_PROOF_MIN_RECOMMENDATIONS = 500_000;
+export const SOCIAL_PROOF_INDIE_MIN_POSITIVE = 1_000_000;
+export const SOCIAL_PROOF_INDIE_MIN_RECOMMENDATIONS = 1_000_000;
 
-export function getSocialMetrics(game: NormalizedGame): SocialMetrics {
-  return {
-    positive: game.positiveReviews ?? Number(game.raw?.positive ?? 0),
-    recommendations:
-      game.recommendations ?? Number(game.raw?.recommendations ?? 0),
-    ownersMid: game.estimatedOwnersMid ?? Number(game.raw?.ownersMid ?? 0),
-  };
-}
-
-/**
- * Hard floor — at least 5k positive reviews AND 5k Steam recommendations
- * (with exceptions for mega-hits).
- */
+/** Catalog is pre-filtered; all indexed games pass this floor. */
 export function passesSocialProofFloor(game: NormalizedGame): boolean {
-  const { positive, recommendations, ownersMid } = getSocialMetrics(game);
-  const combined = positive + recommendations;
-
-  if (ownersMid >= 2_000_000) return true;
-  if (positive >= 50_000 || recommendations >= 40_000) return true;
-
-  if (
-    positive >= SOCIAL_PROOF_MIN_POSITIVE &&
-    recommendations >= SOCIAL_PROOF_MIN_RECOMMENDATIONS
-  ) {
-    return true;
-  }
-
-  if (positive >= 8_000 && recommendations >= 3_000) return true;
-  if (combined >= 12_000) return true;
-
-  return false;
+  return isCatalogEligible(game);
 }
 
-/** Softer floor when the vector pool is too small after filtering. */
 export function passesSocialProofFloorRelaxed(game: NormalizedGame): boolean {
-  if (passesSocialProofFloor(game)) return true;
-  const { positive, recommendations, ownersMid } = getSocialMetrics(game);
-  const combined = positive + recommendations;
-
-  if (combined < 2_000) return false;
-  if (positive >= 3_000 && recommendations >= 2_000) return true;
-  if (positive >= 4_000 || recommendations >= 4_000) return true;
-  return ownersMid >= 500_000;
+  return passesSocialProofFloor(game);
 }
 
-/** Last-resort floor so the pool is never empty after vector + popular fallback. */
 export function passesSocialProofFloorEmergency(game: NormalizedGame): boolean {
-  if (passesSocialProofFloorRelaxed(game)) return true;
-  const { positive, recommendations, ownersMid } = getSocialMetrics(game);
-  const combined = positive + recommendations;
-
-  if (combined < 800) return false;
-  if (positive >= 1_000 && recommendations >= 800) return true;
-  if (combined >= 2_500) return true;
-  return ownersMid >= 100_000;
+  return passesSocialProofFloor(game);
 }
 
 export type SocialProofFloorMode = "strict" | "relaxed" | "emergency";
@@ -73,9 +33,7 @@ export function passesSocialProofByMode(
   game: NormalizedGame,
   mode: SocialProofFloorMode,
 ): boolean {
-  if (mode === "strict") return passesSocialProofFloor(game);
-  if (mode === "relaxed") return passesSocialProofFloorRelaxed(game);
-  return passesSocialProofFloorEmergency(game);
+  return passesSocialProofFloor(game);
 }
 
 export function getSocialProofMultiplier(game: NormalizedGame): number {
@@ -85,33 +43,22 @@ export function getSocialProofMultiplier(game: NormalizedGame): number {
   let mult = 1;
 
   if (positive >= 50_000 || recommendations >= 40_000) {
-    mult = 1.12;
+    mult = 1.1;
   } else if (positive >= 20_000 || recommendations >= 15_000) {
-    mult = 1.08;
+    mult = 1.06;
   } else if (positive >= 10_000 || recommendations >= 8_000) {
-    mult = 1.04;
+    mult = 1.03;
   }
 
-  if (combined < 500) {
-    mult *= 0.04;
-  } else if (positive < 2_000 || recommendations < 2_000) {
-    mult *= 0.35;
-  } else if (
-    positive < SOCIAL_PROOF_MIN_POSITIVE ||
-    recommendations < SOCIAL_PROOF_MIN_RECOMMENDATIONS
-  ) {
-    mult *= 0.68;
-  }
-
-  if (ownersMid > 0 && ownersMid < 80_000) {
-    mult *= 0.9;
+  if (ownersMid > 0 && ownersMid < 500_000) {
+    mult *= 0.92;
   }
 
   const isEarlyAccess =
     game.genre?.toLowerCase().includes("early access") ||
     game.tags.some((t) => /early access/i.test(t));
   if (isEarlyAccess && positive < 10_000) {
-    mult *= 0.85;
+    mult *= 0.9;
   }
 
   return mult;

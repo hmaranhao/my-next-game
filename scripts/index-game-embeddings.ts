@@ -9,7 +9,7 @@
  * Env:
  *   DATABASE_URL — Postgres with pgvector (Neon em produção)
  *   INDEX_GAME_LIMIT — cap opcional (ex.: 5000 para teste). Default: sem limite.
- *   INDEX_SOURCE — normalized | cloud | sample (default: normalized)
+ *   INDEX_SOURCE — curated | cloud | normalized | sample (default: curated)
  *   INDEX_REPLACE — delete all catalogs before index (default: true)
  */
 import { randomUUID } from "node:crypto";
@@ -35,23 +35,37 @@ import {
 const INSERT_BATCH = 200;
 const root = process.cwd();
 
-type IndexSource = "normalized" | "cloud" | "sample";
+type IndexSource = "curated" | "normalized" | "cloud" | "sample";
 
 function resolveSource(): IndexSource {
-  const raw = (process.env.INDEX_SOURCE ?? "normalized").toLowerCase();
-  if (raw === "cloud" || raw === "sample" || raw === "normalized") return raw;
-  return "normalized";
+  const raw = (process.env.INDEX_SOURCE ?? "curated").toLowerCase();
+  if (
+    raw === "curated" ||
+    raw === "cloud" ||
+    raw === "sample" ||
+    raw === "normalized"
+  ) {
+    return raw;
+  }
+  return "curated";
 }
 
 function loadGames(): NormalizedGame[] {
   const source = resolveSource();
+  const curatedPath = path.join(root, "data/games.curated.json");
   const fullPath = path.join(root, "data/games.normalized.json");
   const cloudPath = path.join(root, "data/games.cloud.json");
   const samplePath = path.join(root, "data/samples/games.sample.json");
 
   let games: NormalizedGame[];
 
-  if (source === "sample") {
+  if (source === "curated") {
+    if (!fs.existsSync(curatedPath)) {
+      throw new Error("Missing data/games.curated.json — run npm run data:curated");
+    }
+    games = JSON.parse(fs.readFileSync(curatedPath, "utf-8")) as NormalizedGame[];
+    console.log(`Source: curated (${games.length} games)`);
+  } else if (source === "sample") {
     if (!fs.existsSync(samplePath)) {
       throw new Error("Missing data/samples/games.sample.json");
     }

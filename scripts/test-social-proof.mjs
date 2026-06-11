@@ -1,120 +1,161 @@
-/** Social proof floor tests (mirrors social-proof.ts) */
+/** Social proof / catalog eligibility tests */
 
-const SOCIAL_PROOF_MIN_POSITIVE = 5_000;
-const SOCIAL_PROOF_MIN_RECOMMENDATIONS = 5_000;
-
-function getSocialMetrics(game) {
-  return {
-    positive: game.positiveReviews ?? Number(game.raw?.positive ?? 0),
-    recommendations: game.recommendations ?? Number(game.raw?.recommendations ?? 0),
-    ownersMid: game.estimatedOwnersMid ?? Number(game.raw?.ownersMid ?? 0),
-  };
-}
+import {
+  isCatalogEligible,
+  isCasualGame,
+  isIndieLabeledGame,
+} from "./catalog-eligibility.mjs";
 
 function passesSocialProofFloor(game) {
-  const { positive, recommendations, ownersMid } = getSocialMetrics(game);
-  const combined = positive + recommendations;
-
-  if (ownersMid >= 2_000_000) return true;
-  if (positive >= 50_000 || recommendations >= 40_000) return true;
-
-  if (
-    positive >= SOCIAL_PROOF_MIN_POSITIVE &&
-    recommendations >= SOCIAL_PROOF_MIN_RECOMMENDATIONS
-  ) {
-    return true;
-  }
-
-  if (positive >= 8_000 && recommendations >= 3_000) return true;
-  if (combined >= 12_000) return true;
-
-  return false;
-}
-
-function passesSocialProofFloorRelaxed(game) {
-  if (passesSocialProofFloor(game)) return true;
-  const { positive, recommendations, ownersMid } = getSocialMetrics(game);
-  const combined = positive + recommendations;
-
-  if (combined < 2_000) return false;
-  if (positive >= 3_000 && recommendations >= 2_000) return true;
-  if (positive >= 4_000 || recommendations >= 4_000) return true;
-  return ownersMid >= 500_000;
-}
-
-function passesSocialProofFloorEmergency(game) {
-  if (passesSocialProofFloorRelaxed(game)) return true;
-  const { positive, recommendations, ownersMid } = getSocialMetrics(game);
-  const combined = positive + recommendations;
-  if (combined < 800) return false;
-  if (positive >= 1_000 && recommendations >= 800) return true;
-  if (combined >= 2_500) return true;
-  return ownersMid >= 100_000;
-}
-
-function passesSocialProofByMode(game, mode) {
-  if (mode === "strict") return passesSocialProofFloor(game);
-  if (mode === "relaxed") return passesSocialProofFloorRelaxed(game);
-  return passesSocialProofFloorEmergency(game);
+  return isCatalogEligible(game);
 }
 
 const microGame = {
   positiveReviews: 6,
   recommendations: 0,
-  raw: { positive: 6, recommendations: 0 },
+  estimatedOwnersMid: 50_000,
 };
 
 const evilQuest = {
   positiveReviews: 580,
   recommendations: 511,
   estimatedOwnersMid: 75_000,
-  raw: { positive: 580, recommendations: 511 },
 };
 
-const solidGame = {
-  positiveReviews: 12_000,
-  recommendations: 9_000,
-  raw: { positive: 12000, recommendations: 9000 },
+const curatedHit = {
+  positiveReviews: 550_000,
+  recommendations: 520_000,
+  estimatedOwnersMid: 3_000_000,
+  genre: "Action",
+  tags: ["FPS"],
 };
 
-const borderlineAa = {
+const ownersOnly5k = {
   positiveReviews: 5_200,
-  recommendations: 5_100,
-  raw: { positive: 5200, recommendations: 5100 },
+  recommendations: 1_500,
+  estimatedOwnersMid: 1_500_000,
+  genre: "Action",
+  tags: [],
+};
+
+const ownersWithoutSocial = {
+  positiveReviews: 2_000,
+  recommendations: 1_500,
+  estimatedOwnersMid: 2_000_000,
+  genre: "Action",
+  tags: [],
+};
+
+const recsOnly = {
+  positiveReviews: 50_000,
+  recommendations: 250_000,
+  estimatedOwnersMid: 1_200_000,
+  genre: "Action",
+  tags: [],
 };
 
 if (passesSocialProofFloor(microGame)) {
-  throw new Error("6 reviews should not pass social proof floor");
+  throw new Error("micro game should not pass");
 }
 
 if (passesSocialProofFloor(evilQuest)) {
-  throw new Error("EvilQuest (~580 reviews) should not pass strict social proof floor");
+  throw new Error("EvilQuest should not pass curated floor");
 }
 
-if (!passesSocialProofFloor(solidGame)) {
-  throw new Error("12k reviews should pass social proof floor");
+if (!passesSocialProofFloor(curatedHit)) {
+  throw new Error("mega-hit should pass curated floor");
 }
 
-if (!passesSocialProofFloor(borderlineAa)) {
-  throw new Error("5k+5k should pass social proof floor");
+if (passesSocialProofFloor(ownersOnly5k)) {
+  throw new Error("1.5M owners + 5k reviews should not pass 500k floor");
 }
 
-if (passesSocialProofFloorRelaxed(evilQuest)) {
-  throw new Error("EvilQuest should not pass relaxed floor either");
+if (passesSocialProofFloor(ownersWithoutSocial)) {
+  throw new Error("2M owners without 500k reviews/recs should not pass");
 }
 
-const emergencyGame = {
-  positiveReviews: 1_200,
-  recommendations: 900,
-  raw: { positive: 1200, recommendations: 900 },
+const recsOnlyPass = {
+  positiveReviews: 50_000,
+  recommendations: 520_000,
+  estimatedOwnersMid: 1_200_000,
+  genre: "Action",
+  tags: [],
 };
 
-if (!passesSocialProofFloorEmergency(emergencyGame)) {
-  throw new Error("1.2k+900 should pass emergency floor");
+if (!passesSocialProofFloor(recsOnlyPass)) {
+  throw new Error("1.2M owners + 520k recs should pass");
 }
 
-if (passesSocialProofFloorEmergency(evilQuest)) {
-  throw new Error("EvilQuest should not pass emergency floor");
+if (passesSocialProofFloor(recsOnly)) {
+  throw new Error("1.2M owners + 250k recs should not pass 500k floor");
+}
+
+const below500k = {
+  positiveReviews: 450_000,
+  recommendations: 480_000,
+  estimatedOwnersMid: 2_000_000,
+  genre: "Action",
+  tags: [],
+};
+
+if (passesSocialProofFloor(below500k)) {
+  throw new Error("450k/480k should not pass 500k floor");
+}
+
+const casualHit = {
+  positiveReviews: 600_000,
+  recommendations: 600_000,
+  estimatedOwnersMid: 2_000_000,
+  genre: "Casual, Puzzle",
+  tags: ["Puzzle"],
+};
+
+if (passesSocialProofFloor(casualHit)) {
+  throw new Error("Casual genre should be excluded");
+}
+
+const casualTagOnly = {
+  positiveReviews: 600_000,
+  recommendations: 600_000,
+  estimatedOwnersMid: 2_000_000,
+  genre: "Action",
+  tags: ["Casual", "FPS"],
+};
+
+if (passesSocialProofFloor(casualTagOnly)) {
+  throw new Error("Casual tag should be excluded");
+}
+
+const indieBelow1m = {
+  positiveReviews: 800_000,
+  recommendations: 900_000,
+  estimatedOwnersMid: 1_500_000,
+  genre: "Action, Indie",
+  tags: [],
+};
+
+if (passesSocialProofFloor(indieBelow1m)) {
+  throw new Error("indie-labeled game below 1M social proof should not pass");
+}
+
+const indieAt1m = {
+  positiveReviews: 1_050_000,
+  recommendations: 200_000,
+  estimatedOwnersMid: 1_500_000,
+  genre: "Action, Indie",
+  tags: [],
+};
+
+if (!passesSocialProofFloor(indieAt1m)) {
+  throw new Error("indie-labeled game with 1M+ reviews should pass");
+}
+
+if (!isCasualGame(casualTagOnly)) {
+  throw new Error("isCasualGame should detect Casual tag");
+}
+
+if (!isIndieLabeledGame(indieAt1m)) {
+  throw new Error("isIndieLabeledGame should detect Indie genre");
 }
 
 console.log("social proof tests OK");

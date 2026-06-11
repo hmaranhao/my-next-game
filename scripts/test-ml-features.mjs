@@ -42,19 +42,8 @@ function scoreAllHybrid(candidates, tfById) {
 }
 
 function pickHybrid(candidates, tfById) {
-  const byRank = [...candidates].sort(
-    (a, b) => (b.rankScore ?? b.vectorScore) - (a.rankScore ?? a.vectorScore),
-  );
-  const topRank = byRank[0].rankScore ?? byRank[0].vectorScore;
-  const shortlistIds = new Set(
-    byRank
-      .filter((c) => (c.rankScore ?? c.vectorScore) >= topRank - 0.025)
-      .slice(0, 6)
-      .map((c) => c.gameId),
-  );
   const scored = scoreAllHybrid(candidates, tfById);
-  const finalists = scored.filter((s) => shortlistIds.has(s.gameId));
-  return finalists.reduce((a, b) => (b.combinedScore > a.combinedScore ? b : a));
+  return scored.reduce((a, b) => (b.combinedScore > a.combinedScore ? b : a));
 }
 
 const candidates = [
@@ -75,6 +64,11 @@ const pick = pickHybrid(candidates, tf);
 const pickInScored = scored.find((s) => s.gameId === pick.gameId);
 if (pick.matchPercent !== pickInScored.matchPercent) {
   throw new Error("pick percent must match scored entry");
+}
+
+const topByScore = [...scored].sort((a, b) => b.combinedScore - a.combinedScore)[0];
+if (pick.gameId !== topByScore.gameId) {
+  throw new Error(`pick must be top combined score: expected ${topByScore.gameId}, got ${pick.gameId}`);
 }
 
 if (pick.gameId !== "rpg-a") {

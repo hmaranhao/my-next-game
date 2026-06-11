@@ -11,7 +11,10 @@ import { vectorToArray } from "@/lib/embedding/encode";
 import { buildEmbeddingContext } from "@/lib/embedding/context";
 import { encodePlayedLibraryWeightedVector } from "@/lib/embedding/played-games";
 import { buildGameLookup } from "@/lib/game-lookup";
-import { resolveLastPlayedCatalogGame } from "@/lib/embedding/last-played";
+import {
+  resolveAnchorCatalogGames,
+  resolveMeaningful10hAnchors,
+} from "@/lib/embedding/last-played";
 import { classifyGameTier } from "@/lib/embedding/game-tier";
 import type { CandidateSearchResult } from "@/types/embedding";
 
@@ -66,12 +69,15 @@ export async function POST(request: Request) {
     );
     const ctx = buildEmbeddingContext(games);
     const lookup = buildGameLookup(games);
-    const anchorGame = resolveLastPlayedCatalogGame(
+    const anchorCatalogGames = resolveAnchorCatalogGames(
       snapshot.profile,
       games,
       lookup,
     );
-    const anchorTier = anchorGame ? classifyGameTier(anchorGame) : null;
+    const anchorEntries = resolveMeaningful10hAnchors(snapshot.profile, 5);
+    const anchorTier = anchorCatalogGames[0]
+      ? classifyGameTier(anchorCatalogGames[0])
+      : null;
     const playedGameWeightedVector = encodePlayedLibraryWeightedVector(
       snapshot.profile,
       games,
@@ -100,6 +106,7 @@ export async function POST(request: Request) {
         score: Math.round(c.score * 1000) / 1000,
         vectorScore: Math.round(c.vectorScore * 1000) / 1000,
         popularityScore: Math.round(c.popularityScore * 1000) / 1000,
+        anchorAffinity: Math.round((c.anchorAffinity ?? 0) * 1000) / 1000,
         distance: Math.round(c.distance * 1000) / 1000,
         gameVector: vectorToArray(c.gameVector),
         metadata: c.game,
@@ -120,6 +127,13 @@ export async function POST(request: Request) {
       rejectedGameIds,
       profileTags,
       anchorTier,
+      anchorGames: anchorEntries.slice(0, 3).map((entry, i) => ({
+        name: entry.name,
+        playtimeHours: entry.playtimeHours,
+        tier: anchorCatalogGames[i]
+          ? classifyGameTier(anchorCatalogGames[i])
+          : null,
+      })),
       embedding: {
         dimension: contextMeta.dimension,
         layout: "128-dim shared genre/platform/tag/publisher + continuous",

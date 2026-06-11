@@ -48,6 +48,8 @@ export type ScoredCandidate = {
   gameVector: Float32Array;
   /** Final rank score (vector + popularity blend) */
   score: number;
+  /** Similarity to 10h+ anchor games (0–1) */
+  anchorAffinity?: number;
   /** Raw vector similarity before popularity */
   vectorScore: number;
   popularityScore: number;
@@ -68,6 +70,7 @@ export type CandidateSearchResult = {
     score: number;
     vectorScore?: number;
     popularityScore?: number;
+    anchorAffinity?: number;
     distance: number;
     gameVector: number[];
     metadata: import("@/types/game").NormalizedGame;

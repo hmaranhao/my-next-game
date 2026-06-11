@@ -3,6 +3,7 @@ import { buildPairTrainingRows, type TrainingRow } from "@/lib/ml/training-featu
 export const WORKER_EVENTS = {
   progress: "progress",
   trainingLog: "trainingLog",
+  modelCached: "modelCached",
   complete: "complete",
   error: "error",
 } as const;
@@ -47,6 +48,7 @@ export type WorkerMessage =
       type: typeof WORKER_EVENTS.complete;
       predictions: TfPrediction[];
     }
+  | { type: typeof WORKER_EVENTS.modelCached }
   | { type: typeof WORKER_EVENTS.error; message: string };
 
 export async function fetchTrainingPayload(): Promise<{

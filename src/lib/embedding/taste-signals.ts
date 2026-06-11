@@ -1,6 +1,11 @@
 import type { NormalizedGame } from "@/types/game";
 import type { NormalizedUserProfile, ProfileGameEntry } from "@/types/profile";
-import { splitGenreTokens } from "./genre-utils";
+import {
+  collectGameGenres,
+  collectGameplayTags,
+  isSteamCategory,
+  normMetadataToken,
+} from "./steam-metadata-utils";
 import {
   ABANDONED_PLAYTIME_MINUTES,
   entryPlaytimeWeight,
@@ -63,11 +68,11 @@ function absorbGameSignals(
   targetTags: Map<string, number>,
   targetGenres: Map<string, number>,
 ) {
-  for (const tag of game.tags) {
-    bumpMap(targetTags, tag.trim(), weight);
+  for (const tag of collectGameplayTags(game)) {
+    bumpMap(targetTags, tag, weight * 0.35);
   }
-  for (const genre of splitGenreTokens(game.genre)) {
-    bumpMap(targetGenres, genre, weight);
+  for (const genre of collectGameGenres(game)) {
+    bumpMap(targetGenres, genre, weight * 1.1);
   }
 }
 
@@ -89,10 +94,12 @@ export function buildTasteSignals(
   const penalizeGenres = new Map<string, number>();
 
   for (const tag of profile.steamTags ?? []) {
-    bumpMap(boostTags, tag, 0.6);
+    if (!isSteamCategory(tag)) {
+      bumpMap(boostTags, normMetadataToken(tag), 0.25);
+    }
   }
   for (const genre of profile.inferredGenres) {
-    bumpMap(boostGenres, genre, 0.5);
+    bumpMap(boostGenres, normMetadataToken(genre), 1.0);
   }
 
   for (const entry of getProfileLibraryEntries(profile)) {
@@ -134,15 +141,14 @@ export function applyTasteAdjustment(
 ): number {
   let delta = 0;
 
-  for (const tag of game.tags) {
-    const t = tag.trim();
-    delta += (signals.boostTags.get(t) ?? 0) * 0.04;
-    delta -= (signals.penalizeTags.get(t) ?? 0) * 0.055;
+  for (const tag of collectGameplayTags(game)) {
+    delta += (signals.boostTags.get(tag) ?? 0) * 0.03;
+    delta -= (signals.penalizeTags.get(tag) ?? 0) * 0.04;
   }
 
-  for (const genre of splitGenreTokens(game.genre)) {
-    delta += (signals.boostGenres.get(genre) ?? 0) * 0.05;
-    delta -= (signals.penalizeGenres.get(genre) ?? 0) * 0.06;
+  for (const genre of collectGameGenres(game)) {
+    delta += (signals.boostGenres.get(genre) ?? 0) * 0.08;
+    delta -= (signals.penalizeGenres.get(genre) ?? 0) * 0.07;
   }
 
   return Math.max(0, Math.min(1, rankScore + delta));

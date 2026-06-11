@@ -11,7 +11,7 @@ import {
   getTierBlend,
 } from "./config";
 import { computeProfileGameOverlap } from "./profile-overlap";
-import { computeLastPlayedAffinity } from "./last-played";
+import { computeMultiAnchorAffinity } from "./last-played";
 import {
   computeStudioAffinity,
   computeTierAffinity,
@@ -21,9 +21,7 @@ import { applyTasteAdjustment, type TasteSignals } from "./taste-signals";
 import {
   getGamePopularity,
   getSocialProofMultiplier,
-  passesSocialProofByMode,
   passesSocialProofFloor,
-  type SocialProofFloorMode,
 } from "./social-proof";
 
 export type CandidateRankingContext = {
@@ -32,7 +30,7 @@ export type CandidateRankingContext = {
   taste: TasteSignals;
   embeddingCtx: EmbeddingContext;
   metric: DistanceMetric;
-  lastPlayedCatalogGame: NormalizedGame | null;
+  anchorCatalogGames: NormalizedGame[];
 };
 
 export function getQualityScore(game: NormalizedGame): number {
@@ -94,31 +92,38 @@ export function scoreCandidateForRanking(
   game: NormalizedGame,
   vectorScore: number,
   ctx: CandidateRankingContext,
-  options?: { floor?: SocialProofFloorMode },
-): { rankScore: number; popularityScore: number } | null {
-  const floor = options?.floor ?? "strict";
-  if (!passesSocialProofByMode(game, floor)) return null;
+): { rankScore: number; popularityScore: number; anchorAffinity: number } | null {
+  if (!passesSocialProofFloor(game)) return null;
 
-  const anchor = ctx.lastPlayedCatalogGame;
+  const anchors = ctx.anchorCatalogGames;
+  const primaryAnchor = anchors[0] ?? null;
   const popularity = getGamePopularity(game);
   const overlap = computeProfileGameOverlap(
     ctx.profile,
     game,
     ctx.profileTags,
+    anchors,
   );
   const quality = getQualityScore(game);
 
-  const lastPlayedAffinity = anchor
-    ? computeLastPlayedAffinity(
-        game,
-        anchor,
-        ctx.embeddingCtx,
-        ctx.metric,
-      )
-    : null;
+  const anchorAffinity =
+    anchors.length > 0
+      ? computeMultiAnchorAffinity(
+          game,
+          anchors,
+          ctx.embeddingCtx,
+          ctx.metric,
+        )
+      : 0;
 
-  const tierAffinity = anchor ? computeTierAffinity(anchor, game) : null;
-  const studioAffinity = anchor ? computeStudioAffinity(anchor, game) : null;
+  const lastPlayedAffinity = anchors.length ? anchorAffinity : null;
+
+  const tierAffinity = primaryAnchor
+    ? computeTierAffinity(primaryAnchor, game)
+    : null;
+  const studioAffinity = primaryAnchor
+    ? computeStudioAffinity(primaryAnchor, game)
+    : null;
 
   const base = computeCandidateRankScore({
     vectorScore,
@@ -129,11 +134,12 @@ export function scoreCandidateForRanking(
     tierAffinity,
     studioAffinity,
     game,
-    anchorGame: anchor,
+    anchorGame: primaryAnchor,
   });
 
   return {
     rankScore: applyTasteAdjustment(base, game, ctx.taste),
     popularityScore: popularity,
+    anchorAffinity,
   };
 }

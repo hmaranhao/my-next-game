@@ -6,6 +6,7 @@ const STORAGE_KEY = "indexeddb://my-next-game-model";
 const events = {
   progress: "progress",
   trainingLog: "trainingLog",
+  modelCached: "modelCached",
   complete: "complete",
   error: "error",
 };
@@ -108,6 +109,7 @@ async function loadOrTrain(rows, retrain) {
     try {
       const loaded = await tf.loadLayersModel(STORAGE_KEY);
       postMessage({ type: events.progress, progress: 15 });
+      postMessage({ type: events.modelCached });
       return loaded;
     } catch {
       // train fresh

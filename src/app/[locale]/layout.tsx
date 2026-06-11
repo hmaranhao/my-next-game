@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, setRequestLocale } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Geist, Geist_Mono } from "next/font/google";
 import { routing, type AppLocale } from "@/i18n/routing";
@@ -23,26 +23,38 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export const metadata: Metadata = {
-  applicationName: "My Next Game",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "My Next Game",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-};
-
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
-}
-
 type Props = {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "app" });
+  const title = t("title");
+
+  return {
+    title,
+    description: t("tagline"),
+    applicationName: title,
+    icons: {
+      icon: "/icon.svg",
+      apple: "/icon.svg",
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title,
+    },
+    formatDetection: {
+      telephone: false,
+    },
+  };
+}
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;

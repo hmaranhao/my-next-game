@@ -3,11 +3,17 @@ import type { NormalizedUserProfile, ProfileGameEntry } from "@/types/profile";
 import type { EmbeddingContext } from "./context";
 import { encodeGameVector, vectorToArray } from "./encode";
 import { findCatalogGame, type GameLookup } from "@/lib/game-lookup";
-import { splitGenreTokens } from "./genre-utils";
+import {
+  collectGameGenres,
+  collectGameplayTags,
+  isSteamCategory,
+  normMetadataToken,
+} from "./steam-metadata-utils";
 import {
   entryPlaytimeWeight,
   LIBRARY_ENCODE_LIMIT,
   MEANINGFUL_ANCHOR_PLAYTIME_MINUTES,
+  recencyMultiplier,
   TF_LIBRARY_VECTOR_LIMIT,
   weightedAverageVectors,
 } from "./playtime-weights";
@@ -17,6 +23,8 @@ export type LibraryCatalogMatch = {
   game: NormalizedGame;
   weight: number;
 };
+
+const FALLBACK_LIBRARY_LIMIT = 10;
 
 /** Unified library source: full Steam library when available, else top + recent. */
 export function getProfileLibraryEntries(
@@ -45,8 +53,58 @@ export function hasMeaningfulAnchorPlaytime(entry: ProfileGameEntry): boolean {
 }
 
 /**
+ * Up to N recent meaningful anchors (10h+), most recent first.
+ */
+export function resolveMeaningful10hAnchors(
+  profile: NormalizedUserProfile,
+  limit = 5,
+): ProfileGameEntry[] {
+  const library =
+    profile.libraryGames?.length
+      ? profile.libraryGames
+      : [...profile.topGames, ...profile.recentGames];
+
+  const ordered: ProfileGameEntry[] = [];
+
+  for (const entry of profile.recentGames) {
+    if (hasMeaningfulAnchorPlaytime(entry)) ordered.push(entry);
+  }
+
+  const library10h = library
+    .filter(hasMeaningfulAnchorPlaytime)
+    .filter((e) => e.lastPlayedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.lastPlayedAt!).getTime() -
+        new Date(a.lastPlayedAt!).getTime(),
+    );
+
+  for (const entry of library10h) {
+    ordered.push(entry);
+  }
+
+  const byPlaytime = library
+    .filter(hasMeaningfulAnchorPlaytime)
+    .sort((a, b) => b.playtimeMinutes - a.playtimeMinutes);
+
+  for (const entry of byPlaytime) {
+    ordered.push(entry);
+  }
+
+  const deduped: ProfileGameEntry[] = [];
+  const seen = new Set<number>();
+  for (const entry of ordered) {
+    if (entry.appId > 0 && seen.has(entry.appId)) continue;
+    if (entry.appId > 0) seen.add(entry.appId);
+    deduped.push(entry);
+    if (deduped.length >= limit) break;
+  }
+
+  return deduped;
+}
+
+/**
  * Recommendation anchor: recent Steam session among titles with 10h+ total playtime.
- * Skips "testei 5 minutos e fechei" entries in the recent list.
  */
 export function resolveMeaningfulLastPlayedAnchor(
   recentGames: ProfileGameEntry[],
@@ -76,10 +134,13 @@ export function resolveMeaningfulLastPlayedAnchor(
   return null;
 }
 
-/** Meaningful last-played anchor for ranking (10h+ playtime). */
+/** Primary anchor for ranking (first 10h+ anchor). */
 export function resolveLastPlayedEntry(
   profile: NormalizedUserProfile,
 ): ProfileGameEntry | null {
+  const anchors = resolveMeaningful10hAnchors(profile, 1);
+  if (anchors.length) return anchors[0];
+
   if (
     profile.lastPlayedGame &&
     hasMeaningfulAnchorPlaytime(profile.lastPlayedGame)
@@ -95,50 +156,49 @@ export function resolveLastPlayedEntry(
   );
 }
 
-/** Map library entries to catalog games with playtime/recency weights. */
+/** Query vector built from 10h+ games; fallback to top playtime if none. */
 export function collectLibraryCatalogMatches(
   profile: NormalizedUserProfile,
   games: NormalizedGame[],
   lookup: GameLookup,
   limit = LIBRARY_ENCODE_LIMIT,
 ): LibraryCatalogMatch[] {
-  const matches: LibraryCatalogMatch[] = [];
-  const lastEntry = resolveLastPlayedEntry(profile);
-  const lastAppId = lastEntry?.appId ?? 0;
+  const anchors = resolveMeaningful10hAnchors(profile, limit);
   const seenAppIds = new Set<number>();
+  const matches: LibraryCatalogMatch[] = [];
 
-  if (lastEntry && lastAppId > 0) {
-    const lastGame = findCatalogGame(
-      lastEntry.name,
-      lastEntry.appId,
-      lookup,
-      games,
-    );
-    if (lastGame) {
-      matches.push({
-        entry: lastEntry,
-        game: lastGame,
-        weight: entryPlaytimeWeight(lastEntry) * 3,
-      });
-      seenAppIds.add(lastAppId);
-    }
+  if (anchors.length) {
+    anchors.forEach((entry, index) => {
+      if (entry.appId > 0 && seenAppIds.has(entry.appId)) return;
+      const game = findCatalogGame(entry.name, entry.appId, lookup, games);
+      if (!game) return;
+      if (entry.appId > 0) seenAppIds.add(entry.appId);
+
+      const recencyBoost = index === 0 ? 1.2 : 1;
+      const weight =
+        entryPlaytimeWeight(entry) *
+        recencyMultiplier(entry.lastPlayedAt) *
+        recencyBoost;
+
+      matches.push({ entry, game, weight });
+    });
+    return matches;
   }
 
-  for (const entry of getProfileLibraryEntries(profile)) {
+  const fallback = getProfileLibraryEntries(profile)
+    .filter((e) => e.playtimeMinutes > 0)
+    .slice(0, FALLBACK_LIBRARY_LIMIT);
+
+  for (const entry of fallback) {
     if (entry.appId > 0 && seenAppIds.has(entry.appId)) continue;
     const game = findCatalogGame(entry.name, entry.appId, lookup, games);
     if (!game) continue;
-
-    const isLastPlayed = entry.appId > 0 && entry.appId === lastAppId;
-    const weight = entryPlaytimeWeight(entry) * (isLastPlayed ? 3 : 1);
-
+    if (entry.appId > 0) seenAppIds.add(entry.appId);
     matches.push({
       entry,
       game,
-      weight,
+      weight: entryPlaytimeWeight(entry),
     });
-
-    if (matches.length >= limit) break;
   }
 
   return matches;
@@ -175,7 +235,7 @@ export function encodePlayedLibraryVectors(
   return matches.map((m) => vectorToArray(encodeGameVector(m.game, ctx)));
 }
 
-/** Tags from library (playtime + recency weighted). */
+/** Genre + gameplay tags for profile encoding (genres dominate; no Steam categories). */
 export function collectProfileTags(
   profile: NormalizedUserProfile,
   games: NormalizedGame[],
@@ -191,38 +251,33 @@ export function collectProfileTags(
   );
 
   for (const { game, weight } of matches) {
-    if (!game.tags.length && !game.genre) continue;
-
-    for (const tag of game.tags) {
-      const t = tag.trim();
-      if (!t) continue;
-      tagWeights.set(t, (tagWeights.get(t) ?? 0) + weight);
+    for (const genre of collectGameGenres(game)) {
+      tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + weight * 1.4);
     }
-
-    if (game.genre) {
-      tagWeights.set(game.genre, (tagWeights.get(game.genre) ?? 0) + weight * 0.6);
+    for (const tag of collectGameplayTags(game)) {
+      tagWeights.set(tag, (tagWeights.get(tag) ?? 0) + weight * 0.35);
     }
   }
 
   for (const genre of profile.inferredGenres) {
-    tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + 0.5);
+    const g = normMetadataToken(genre);
+    if (g) tagWeights.set(g, (tagWeights.get(g) ?? 0) + 1.0);
   }
 
   for (const tag of profile.steamTags ?? []) {
-    tagWeights.set(tag, (tagWeights.get(tag) ?? 0) + 1.2);
+    const n = normMetadataToken(tag);
+    if (!n || isSteamCategory(n)) continue;
+    tagWeights.set(n, (tagWeights.get(n) ?? 0) + 0.4);
   }
 
-  const lastEntry = resolveLastPlayedEntry(profile);
-  if (lastEntry) {
-    const lastGame = findCatalogGame(lastEntry.name, lastEntry.appId, lookup, games);
-    if (lastGame) {
-      for (const tag of lastGame.tags) {
-        const t = tag.trim();
-        if (t) tagWeights.set(t, (tagWeights.get(t) ?? 0) + 2.5);
-      }
-      for (const g of splitGenreTokens(lastGame.genre)) {
-        tagWeights.set(g, (tagWeights.get(g) ?? 0) + 1.8);
-      }
+  for (const entry of resolveMeaningful10hAnchors(profile, 5)) {
+    const anchorGame = findCatalogGame(entry.name, entry.appId, lookup, games);
+    if (!anchorGame) continue;
+    for (const genre of collectGameGenres(anchorGame)) {
+      tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + 3.5);
+    }
+    for (const tag of collectGameplayTags(anchorGame)) {
+      tagWeights.set(tag, (tagWeights.get(tag) ?? 0) + 0.8);
     }
   }
 

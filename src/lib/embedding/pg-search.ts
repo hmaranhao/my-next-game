@@ -6,7 +6,7 @@ import { encodeGameVector, encodeProfileVectorFromLibrary } from "./encode";
 import { scoreVectors } from "./distance";
 import { getCandidateTopK, getFinalPickTopN } from "./config";
 import { scoreCandidateForRanking } from "./candidate-ranking";
-import { resolveLastPlayedCatalogGame } from "./last-played";
+import { resolveAnchorCatalogGames } from "./last-played";
 import { loadActiveEmbeddingCatalog } from "./catalog";
 import {
   collectLibraryCatalogMatches,
@@ -26,7 +26,6 @@ import {
   buildTasteSignals,
   mergeRejectedGameIds,
 } from "./taste-signals";
-import type { SocialProofFloorMode } from "./social-proof";
 
 type PgRow = {
   gameExternalId: string;
@@ -34,8 +33,6 @@ type PgRow = {
   popularityScore: number;
   distance: number;
 };
-
-const FLOOR_MODES: SocialProofFloorMode[] = ["strict", "relaxed", "emergency"];
 
 export async function findTopGameCandidatesPg(
   profile: NormalizedUserProfile,
@@ -71,7 +68,7 @@ export async function findTopGameCandidatesPg(
     const playedAppIds = buildPlayedAppIdSet(profile);
     const taste = buildTasteSignals(profile, games, lookup, feedback);
     const rejectedIds = [...mergeRejectedGameIds(feedback, extraRejectIds)];
-    const lastPlayedCatalogGame = resolveLastPlayedCatalogGame(
+    const anchorCatalogGames = resolveAnchorCatalogGames(
       profile,
       games,
       lookup,
@@ -82,13 +79,13 @@ export async function findTopGameCandidatesPg(
       taste,
       embeddingCtx: ctx,
       metric,
-      lastPlayedCatalogGame,
+      anchorCatalogGames,
     };
     const playedExcludeIds = [...new Set([...playedAppIds].map(String))];
 
     const topK = getCandidateTopK();
     const minCandidates = Math.min(getFinalPickTopN(), topK);
-    const fetchLimit = Math.min(topK * 30, 5000);
+    const fetchLimit = Math.min(topK * 8, catalog.gameCount);
     const searchVec = applySearchWeights(queryVector);
     const vecLit = toPgVectorLiteral(searchVec);
 
@@ -131,10 +128,7 @@ export async function findTopGameCandidatesPg(
     const drafts: ScoredDraft[] = [];
     const seenIds = new Set<string>();
 
-    function tryScoreRow(
-      row: PgRow,
-      floor: SocialProofFloorMode,
-    ): ScoredDraft | null {
+    function tryScoreRow(row: PgRow): ScoredDraft | null {
       const game = enrichCatalogGame(row.gameMetadata as NormalizedGame, lookup);
       if (rejectedIds.includes(row.gameExternalId)) return null;
       if (seenIds.has(row.gameExternalId)) return null;
@@ -146,9 +140,7 @@ export async function findTopGameCandidatesPg(
         gameVector,
         metric,
       );
-      const scored = scoreCandidateForRanking(game, vectorScore, rankingCtx, {
-        floor,
-      });
+      const scored = scoreCandidateForRanking(game, vectorScore, rankingCtx);
       if (!scored) return null;
 
       seenIds.add(row.gameExternalId);
@@ -160,21 +152,15 @@ export async function findTopGameCandidatesPg(
         popularityScore: scored.popularityScore,
         score: scored.rankScore,
         distance,
+        anchorAffinity: scored.anchorAffinity,
       };
     }
 
-    function scoreRowsWithFloors(rows: PgRow[]) {
-      for (const mode of FLOOR_MODES) {
-        if (drafts.length >= topK) break;
-        for (const row of rows) {
-          if (drafts.length >= topK) break;
-          const draft = tryScoreRow(row, mode);
-          if (draft) drafts.push(draft);
-        }
-      }
+    for (const row of vectorRows) {
+      if (drafts.length >= topK) break;
+      const draft = tryScoreRow(row);
+      if (draft) drafts.push(draft);
     }
-
-    scoreRowsWithFloors(vectorRows);
 
     if (drafts.length < minCandidates) {
       const popularRows =
@@ -192,7 +178,7 @@ export async function findTopGameCandidatesPg(
             LIMIT $3`,
               catalog.id,
               playedExcludeIds,
-              1200,
+              Math.min(400, catalog.gameCount),
             )
           : await prisma.$queryRawUnsafe<PgRow[]>(
               `SELECT
@@ -205,10 +191,14 @@ export async function findTopGameCandidatesPg(
             ORDER BY e."popularityScore" DESC NULLS LAST
             LIMIT $2`,
               catalog.id,
-              1200,
+              Math.min(400, catalog.gameCount),
             );
 
-      scoreRowsWithFloors(popularRows);
+      for (const row of popularRows) {
+        if (drafts.length >= topK) break;
+        const draft = tryScoreRow(row);
+        if (draft) drafts.push(draft);
+      }
     }
 
     drafts.sort((a, b) => b.score - a.score);

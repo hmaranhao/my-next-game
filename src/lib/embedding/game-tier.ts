@@ -1,5 +1,5 @@
 import type { NormalizedGame } from "@/types/game";
-import { getSocialMetrics } from "./social-proof";
+import { getSocialMetrics } from "@/lib/catalog/social-metrics";
 
 export type GameProductionTier = "AAA" | "AA" | "INDIE";
 

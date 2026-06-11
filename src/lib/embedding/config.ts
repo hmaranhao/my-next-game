@@ -2,20 +2,20 @@ import { EMBEDDING_DIMENSION, EMBEDDING_LAYOUT as L } from "@/types/embedding";
 
 /** One-hot / multi-hot strength when encoding vectors */
 export const ENCODE_WEIGHTS = {
-  profileGenre: 1,
-  /** Tags inferred from library + genres mapped to tag slots */
-  profileTag: 1.6,
-  gameGenre: 0.85,
-  gameTag: 2,
+  profileGenre: 1.5,
+  /** Gameplay tags (categories excluded upstream). */
+  profileTag: 1.0,
+  gameGenre: 1.5,
+  gameTag: 0.9,
   gamePlatform: 1,
   gamePublisher: 0.75,
 } as const;
 
-/** Per-dimension multiplier for similarity (tags dominate matching). */
+/** Per-dimension multiplier for similarity (Steam genres dominate). */
 export const SEGMENT_SIMILARITY_WEIGHTS = {
-  genre: 0.9,
+  genre: 2.5,
   platform: 0.55,
-  tags: 2.75,
+  tags: 1.1,
   publisher: 0.45,
   continuous: 0.75,
 } as const;
@@ -46,8 +46,8 @@ export function getDimensionWeights(): Float32Array {
 
 /** How much popularity (reviews / owners) affects final rank 0–1. */
 export function getPopularityBlend(): number {
-  const raw = Number.parseFloat(process.env.POPULARITY_BLEND ?? "0.28");
-  if (!Number.isFinite(raw)) return 0.28;
+  const raw = Number.parseFloat(process.env.POPULARITY_BLEND ?? "0.18");
+  if (!Number.isFinite(raw)) return 0.18;
   return Math.min(0.45, Math.max(0, raw));
 }
 
@@ -67,22 +67,22 @@ export function getQualityBlend(): number {
 
 /** How much the last-played game steers recommendations (default 0.32). */
 export function getLastPlayedBlend(): number {
-  const raw = Number.parseFloat(process.env.LAST_PLAYED_BLEND ?? "0.32");
-  if (!Number.isFinite(raw)) return 0.32;
-  return Math.min(0.45, Math.max(0, raw));
+  const raw = Number.parseFloat(process.env.LAST_PLAYED_BLEND ?? "0.45");
+  if (!Number.isFinite(raw)) return 0.45;
+  return Math.min(0.55, Math.max(0, raw));
 }
 
 /** Production tier (AAA/AA/Indie) match vs anchor game. */
 export function getTierBlend(): number {
-  const raw = Number.parseFloat(process.env.TIER_BLEND ?? "0.14");
-  if (!Number.isFinite(raw)) return 0.14;
+  const raw = Number.parseFloat(process.env.TIER_BLEND ?? "0.10");
+  if (!Number.isFinite(raw)) return 0.10;
   return Math.min(0.25, Math.max(0, raw));
 }
 
 /** Same developer / publisher as anchor. */
 export function getStudioBlend(): number {
-  const raw = Number.parseFloat(process.env.STUDIO_BLEND ?? "0.1");
-  if (!Number.isFinite(raw)) return 0.1;
+  const raw = Number.parseFloat(process.env.STUDIO_BLEND ?? "0.08");
+  if (!Number.isFinite(raw)) return 0.08;
   return Math.min(0.18, Math.max(0, raw));
 }
 

@@ -70,10 +70,7 @@ export async function buildSteamProfile(
 
     for (const genre of meta.genres) {
       genreSet.add(genre);
-      tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + weight * 0.8);
-    }
-    for (const category of meta.categories) {
-      tagWeights.set(category, (tagWeights.get(category) ?? 0) + weight);
+      tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + weight * 1.1);
     }
   }
 
@@ -82,10 +79,7 @@ export async function buildSteamProfile(
     if (lastMeta) {
       for (const genre of lastMeta.genres) {
         genreSet.add(genre);
-        tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + 2.2);
-      }
-      for (const category of lastMeta.categories) {
-        tagWeights.set(category, (tagWeights.get(category) ?? 0) + 2.5);
+        tagWeights.set(genre, (tagWeights.get(genre) ?? 0) + 2.8);
       }
     }
   }
