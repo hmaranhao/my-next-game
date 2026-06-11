@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 
 import type { TrainingLogEntry } from "@/lib/ml/training-log-store";
+import { loadTfVisFromCdn } from "@/lib/ml/tfjs-vis-cdn";
 
 export type { TrainingLogEntry };
 
@@ -39,7 +40,7 @@ export function TfTrainingDrawer({
     let cancelled = false;
 
     async function renderCharts() {
-      const tfvis = await import("@tensorflow/tfjs-vis");
+      const tfvis = await loadTfVisFromCdn();
       if (cancelled) return;
 
       if (!visOpenRef.current) {
@@ -105,7 +106,7 @@ export function TfTrainingDrawer({
   }, [open, logs, t]);
 
   async function openTfVisor() {
-    const tfvis = await import("@tensorflow/tfjs-vis");
+    const tfvis = await loadTfVisFromCdn();
     tfvis.visor().open();
     visOpenRef.current = true;
   }
