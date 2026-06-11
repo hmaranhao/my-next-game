@@ -58,6 +58,29 @@ Tipos: `src/types/game.ts` · loader: `src/lib/game-data.ts`.
 | `npm run db:seed` | Seed mínimo |
 | `npm run data:download` | Baixa e normaliza dataset Kaggle |
 | `npm run lint` | ESLint |
+| `npm run test:e2e` | Playwright E2E (APIs mockadas, sem Steam live) |
+
+## Testes E2E (Playwright)
+
+Não dependem de Steam ao vivo nem de Postgres — as rotas `/api/*` são **mockadas** no browser.
+
+```bash
+npm install
+npx playwright install chromium   # primeira vez
+npm run test:e2e
+```
+
+Variáveis opcionais:
+
+| Variável | Uso |
+|---------|-----|
+| `PLAYWRIGHT_PORT` | Porta do dev server (default `3000`) |
+| `USE_SAMPLE_GAME_DATA` | Catálogo amostra no servidor (default `true` no Playwright) |
+| `CI` | Setado no GitHub Actions — sobe servidor automaticamente |
+
+Com `npm run dev` já rodando na mesma porta, o Playwright **reutiliza** o servidor local.
+
+Para fluxo completo com pgvector real: `docker compose up -d` + `npm run db:reindex-curated` (opcional; E2E não exige).
 
 ## Modelo de dados (Prisma)
 

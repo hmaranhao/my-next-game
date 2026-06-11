@@ -4,6 +4,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { notFound } from "next/navigation";
 import { Geist, Geist_Mono } from "next/font/google";
 import { routing, type AppLocale } from "@/i18n/routing";
+import { PwaRegister } from "@/components/pwa-register";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -72,6 +73,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <PwaRegister />
         <NextIntlClientProvider messages={messages}>
           {children}
         </NextIntlClientProvider>

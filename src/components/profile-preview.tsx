@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GameDetailCard } from "@/components/game-detail-card";
+import { GameCoverImage } from "@/components/game-cover-image";
 import { buildRecommendationExplanation } from "@/lib/ml/explanation";
 import { pickHybridRecommendation, scoreAllHybrid, calibrateRankScoresToMatchPercent } from "@/lib/ml/rank-candidates";
 import {
@@ -614,16 +615,11 @@ export function ProfilePreview({
                       : ""
                   }`}
                 >
-                  {c.metadata.headerImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={c.metadata.headerImage}
-                      alt=""
-                      className="size-14 shrink-0 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="size-14 shrink-0 rounded-lg bg-muted" />
-                  )}
+                  <GameCoverImage
+                    src={c.metadata.headerImage}
+                    className="size-14 shrink-0 rounded-lg object-cover"
+                    compact
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
                       {index + 1}. {c.name}

@@ -35,7 +35,8 @@
     "reviews": "{positive} avaliações positivas · {recommendations} recomendações Steam",
     "owners": "Estimativa de proprietários: {range}",
     "developer": "Desenvolvedor",
-    "viewOnSteam": "Ver na Steam"
+    "viewOnSteam": "Ver na Steam",
+    "imageFallback": "Capa do jogo indisponível"
   },
   "recommendation": {
     "title": "Seu próximo game",

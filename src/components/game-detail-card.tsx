@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { NormalizedGame } from "@/types/game";
 import { steamStoreUrl } from "@/types/game";
+import { GameCoverImage } from "@/components/game-cover-image";
 
 type Props = {
   game: NormalizedGame;
@@ -21,14 +22,10 @@ export function GameDetailCard({ game, matchPercent, explanation, compact }: Pro
 
   return (
     <article className="overflow-hidden rounded-xl border border-border bg-card/90">
-      {game.headerImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={game.headerImage}
-          alt=""
-          className="h-40 w-full object-cover sm:h-48"
-        />
-      ) : null}
+      <GameCoverImage
+        src={game.headerImage}
+        className="h-40 w-full object-cover sm:h-48"
+      />
 
       <div className="space-y-3 p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">

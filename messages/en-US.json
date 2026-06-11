@@ -35,7 +35,8 @@
     "reviews": "{positive} positive reviews · {recommendations} Steam recommendations",
     "owners": "Estimated owners: {range}",
     "developer": "Developer",
-    "viewOnSteam": "View on Steam"
+    "viewOnSteam": "View on Steam",
+    "imageFallback": "Game cover unavailable"
   },
   "recommendation": {
     "title": "Your next game",
