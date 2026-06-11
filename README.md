@@ -258,11 +258,3 @@ npx wrangler r2 object put my-next-game-data/co-occurrence.cloud.json --file=dat
 | `npm run data:cloud` | Catálogo reduzido para R2 |
 | `npm run cf-typegen` | Tipos dos bindings Cloudflare |
 
-
-Experimente: https://my-next-game.herculeslima-maranhao.workers.dev  
-Código: https://github.com/hmaranhao/my-next-game
-
-
-#InteligenciaArtificial #MachineLearning #NextJS #EngenhariaDeSoftware #Steam #PWA #DesenvolvimentoWeb #Portfolio #PosGraduacao
-
-</details>
