@@ -258,40 +258,10 @@ npx wrangler r2 object put my-next-game-data/co-occurrence.cloud.json --file=dat
 | `npm run data:cloud` | Catálogo reduzido para R2 |
 | `npm run cf-typegen` | Tipos dos bindings Cloudflare |
 
-## Post LinkedIn
-
-<details>
-<summary>Texto pronto para copiar e publicar</summary>
-
-Acabei de finalizar um projeto que mistura duas paixões: jogos e IA aplicada à engenharia de software.
-
-O problema é familiar: você conhece bem o que já joga, mas entre milhares de títulos na Steam fica difícil escolher **o próximo jogo que ainda não está na sua biblioteca**.
-
-A solução foi o **My Next Game** — uma PWA que analisa seu perfil Steam (ou um formulário manual, se o perfil for privado) e recomenda **um único jogo fora da sua biblioteca**, com explicação do porquê e **% de match**.
-
-**Como funciona por baixo do capô:**
-
-→ Integração com a **Steam Web API** (biblioteca, tempo jogado, gêneros)  
-→ Pipeline de dados com dataset **Kaggle** (~122k jogos normalizados)  
-→ Busca vetorial com **PostgreSQL + pgvector** (HNSW) para filtrar candidatos  
-→ **TensorFlow.js no browser** para o ranking final — ML rodando no dispositivo do usuário  
-→ Score de co-ocorrência (“quem gostou de X também curtiu Y”)  
-→ Catálogo curado de ~128 títulos mainstream — **nunca sugere jogos que você já possui**
-
-**Stack:** Next.js 16 · React 19 · TypeScript · Tailwind · shadcn/ui · Prisma · next-intl (pt-BR/en-US)
-
-**Infra em produção:** Cloudflare Workers + Hyperdrive + Neon Postgres + R2
-
-**Qualidade:** PWA instalável · fluxo LGPD para perfis privados · testes E2E com Playwright · CI no GitHub Actions
-
-Desenvolvido com metodologia **Spec-Driven FIRE** — 8 entregas incrementais, do scaffold ao deploy, com checkpoints de arquitetura, ML e UX.
-
-Projeto da pós-graduação em **Engenharia de Software com IA Aplicada**.
 
 Experimente: https://my-next-game.herculeslima-maranhao.workers.dev  
 Código: https://github.com/hmaranhao/my-next-game
 
-Se você também fica perdido escolhendo o próximo título para **descobrir** — testa aí e me conta se acertou. 🎮
 
 #InteligenciaArtificial #MachineLearning #NextJS #EngenhariaDeSoftware #Steam #PWA #DesenvolvimentoWeb #Portfolio #PosGraduacao
 
