@@ -22,18 +22,15 @@
 		"VECTOR_TOP_K": "150",
 		"VECTOR_PERSIST_TOP_N": "20",
 		"VECTOR_FINAL_PICK_TOP_N": "10",
-		"USE_SAMPLE_GAME_DATA": "true"
+		"USE_SAMPLE_GAME_DATA": "false"
 	},
-	// Postgres externo (Neon, Supabase, etc.) — crie com:
-	// npx wrangler hyperdrive create my-next-game-db --connection-string="$DATABASE_URL"
-	// Depois substitua o id abaixo e remova DATABASE_URL dos secrets se usar só Hyperdrive.
-	// "hyperdrive": [
-	// 	{
-	// 		"binding": "HYPERDRIVE",
-	// 		"id": "<HYPERDRIVE_CONFIG_ID>",
-	// 		"localConnectionString": "postgresql://postgres:postgres@localhost:5433/my_next_game"
-	// 	}
-	// ],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "c6a3fce5c6684ecc98231df97da1f36e",
+			"localConnectionString": "postgresql://postgres:postgres@localhost:5433/my_next_game"
+		}
+	],
 	// Catálogo reduzido (~2k jogos) — gere com npm run data:cloud && faça upload para o bucket.
 	// "r2_buckets": [
 	// 	{

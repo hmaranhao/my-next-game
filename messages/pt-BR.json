@@ -54,6 +54,7 @@
     "explainTierMatch": "Mesmo nível de produção ({tier}) que {played} — recomendamos {game} no mesmo patamar. Match de {match}%.",
     "explainMultiAnchor": "Parecido com o que você jogou com 10h+ ({played}). {game} combina com esse perfil. Match de {match}%.",
     "openTrainingDrawer": "Ver treinamento do modelo",
+    "closeDrawer": "Fechar painel de treinamento",
     "trainingDrawerTitle": "Treinamento TensorFlow.js",
     "trainingDrawerActive": "Modelo em treinamento no navegador…",
     "trainingDrawerEmpty": "Aguardando primeira época…",

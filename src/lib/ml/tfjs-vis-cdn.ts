@@ -1,11 +1,27 @@
+type TfVisSurface = { name: string; tab: string };
+
+type TfVisLinechartOpts = {
+  xLabel: string;
+  yLabel: string;
+  height: number;
+  width?: number;
+};
+
+type TfVisPoint = { x: number; y: number };
+
+type TfVisLinechartData = {
+  values: TfVisPoint[] | TfVisPoint[][];
+  series?: string[];
+};
+
 type TfVisModule = {
-  visor: () => { open: () => void };
+  visor: () => { open: () => void; close: () => void };
   render: {
     linechart: (
-      surface: { name: string; tab: string },
-      data: { values: Array<{ x: number; y: number }>; series: string[] },
-      opts: { xLabel: string; yLabel: string; height: number },
-    ) => void;
+      container: HTMLElement | TfVisSurface,
+      data: TfVisLinechartData,
+      opts?: TfVisLinechartOpts,
+    ) => Promise<void>;
   };
 };
 
@@ -50,4 +66,16 @@ export async function loadTfVisFromCdn(): Promise<TfVisModule> {
   }
 
   return window.tfvis;
+}
+
+export async function closeTfVisorIfOpen(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (window.tfvis) {
+    try {
+      window.tfvis.visor().close();
+    } catch {
+      // visor may not be mounted
+    }
+  }
+  document.getElementById("tfjs-visor-container")?.remove();
 }

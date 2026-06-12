@@ -54,6 +54,7 @@
     "explainTierMatch": "Same production tier ({tier}) as {played} — {game} matches that scale. {match}% match.",
     "explainMultiAnchor": "Similar to your 10h+ recent games ({played}). {game} fits that profile. {match}% match.",
     "openTrainingDrawer": "View model training",
+    "closeDrawer": "Close training panel",
     "trainingDrawerTitle": "TensorFlow.js training",
     "trainingDrawerActive": "Training model in your browser…",
     "trainingDrawerEmpty": "Waiting for first epoch…",

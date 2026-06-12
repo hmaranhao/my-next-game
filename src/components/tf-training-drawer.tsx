@@ -2,16 +2,19 @@
 
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  closeTfVisorIfOpen,
+  loadTfVisFromCdn,
+} from "@/lib/ml/tfjs-vis-cdn";
 
 import type { TrainingLogEntry } from "@/lib/ml/training-log-store";
-import { loadTfVisFromCdn } from "@/lib/ml/tfjs-vis-cdn";
 
 export type { TrainingLogEntry };
 
@@ -23,6 +26,12 @@ type Props = {
   isTraining: boolean;
 };
 
+function waitForLayout(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 export function TfTrainingDrawer({
   open,
   onOpenChange,
@@ -31,22 +40,34 @@ export function TfTrainingDrawer({
   isTraining,
 }: Props) {
   const t = useTranslations();
-  const visOpenRef = useRef(false);
-  const chartHostRef = useRef<HTMLDivElement>(null);
+  const lossChartRef = useRef<HTMLDivElement>(null);
+  const accChartRef = useRef<HTMLDivElement>(null);
+  const tableHostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open || !logs.length) return;
+    if (!open) {
+      void closeTfVisorIfOpen();
+      return;
+    }
+
+    if (!logs.length) return;
 
     let cancelled = false;
 
     async function renderCharts() {
+      await closeTfVisorIfOpen();
       const tfvis = await loadTfVisFromCdn();
       if (cancelled) return;
 
-      if (!visOpenRef.current) {
-        tfvis.visor().open();
-        visOpenRef.current = true;
-      }
+      await waitForLayout();
+      if (cancelled) return;
+
+      const lossHost = lossChartRef.current;
+      const accHost = accChartRef.current;
+      const chartWidth = Math.max(
+        280,
+        accHost?.clientWidth ?? lossHost?.clientWidth ?? 320,
+      );
 
       const lossPoints = logs.map((l) => ({ x: l.epoch, y: l.loss }));
       const accPoints = logs.map((l) => ({
@@ -54,33 +75,35 @@ export function TfTrainingDrawer({
         y: (l.accuracy ?? 0) * 100,
       }));
 
-      tfvis.render.linechart(
-        {
-          name: t("recommendation.trainingChartAccuracy"),
-          tab: t("recommendation.trainingTab"),
-        },
-        { values: accPoints, series: ["accuracy"] },
-        {
-          xLabel: t("recommendation.trainingEpochAxis"),
-          yLabel: t("recommendation.trainingAccuracyAxis"),
-          height: 280,
-        },
-      );
+      if (accHost) {
+        accHost.innerHTML = "";
+        await tfvis.render.linechart(
+          accHost,
+          { values: accPoints, series: ["accuracy"] },
+          {
+            xLabel: t("recommendation.trainingEpochAxis"),
+            yLabel: t("recommendation.trainingAccuracyAxis"),
+            height: 220,
+            width: chartWidth,
+          },
+        );
+      }
 
-      tfvis.render.linechart(
-        {
-          name: t("recommendation.trainingChartLoss"),
-          tab: t("recommendation.trainingTab"),
-        },
-        { values: lossPoints, series: ["loss"] },
-        {
-          xLabel: t("recommendation.trainingEpochAxis"),
-          yLabel: t("recommendation.trainingLossAxis"),
-          height: 280,
-        },
-      );
+      if (lossHost) {
+        lossHost.innerHTML = "";
+        await tfvis.render.linechart(
+          lossHost,
+          { values: lossPoints, series: ["loss"] },
+          {
+            xLabel: t("recommendation.trainingEpochAxis"),
+            yLabel: t("recommendation.trainingLossAxis"),
+            height: 220,
+            width: chartWidth,
+          },
+        );
+      }
 
-      const host = chartHostRef.current;
+      const host = tableHostRef.current;
       if (host) {
         host.innerHTML = "";
         const table = document.createElement("table");
@@ -105,17 +128,19 @@ export function TfTrainingDrawer({
     };
   }, [open, logs, t]);
 
-  async function openTfVisor() {
-    const tfvis = await loadTfVisFromCdn();
-    tfvis.visor().open();
-    visOpenRef.current = true;
-  }
-
   const latest = logs[logs.length - 1];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      data-testid="training-drawer"
+    >
       <SheetHeader>
+        <SheetClose
+          label={t("recommendation.closeDrawer")}
+          onClick={() => onOpenChange(false)}
+        />
         <SheetTitle>{t("recommendation.trainingDrawerTitle")}</SheetTitle>
         {isTraining ? (
           <p className="text-xs text-muted-foreground">
@@ -136,17 +161,40 @@ export function TfTrainingDrawer({
       </SheetHeader>
       <SheetContent>
         <div className="space-y-4">
-          <Button type="button" variant="outline" size="sm" onClick={() => void openTfVisor()}>
-            {t("recommendation.openTfVisor")}
-          </Button>
-          <div ref={chartHostRef} className="rounded-lg border border-border bg-card/60 p-3" />
-          {!logs.length ? (
+          {logs.length > 0 ? (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    {t("recommendation.trainingChartAccuracy")}
+                  </p>
+                  <div
+                    ref={accChartRef}
+                    className="w-full min-h-[220px] rounded-lg border border-border bg-card/60 p-2"
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    {t("recommendation.trainingChartLoss")}
+                  </p>
+                  <div
+                    ref={lossChartRef}
+                    className="w-full min-h-[220px] rounded-lg border border-border bg-card/60 p-2"
+                  />
+                </div>
+              </div>
+              <div
+                ref={tableHostRef}
+                className="rounded-lg border border-border bg-card/60 p-3"
+              />
+            </>
+          ) : (
             <p className="text-sm text-muted-foreground">
               {isTraining
                 ? t("recommendation.trainingDrawerEmpty")
                 : t("recommendation.trainingDrawerNoLogs")}
             </p>
-          ) : null}
+          )}
         </div>
       </SheetContent>
     </Sheet>

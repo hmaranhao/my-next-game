@@ -664,6 +664,7 @@ export function ProfilePreview({
             type="button"
             variant="outline"
             size="sm"
+            data-testid="open-training-drawer"
             onClick={() => setTrainingDrawerOpen(true)}
           >
             {t("recommendation.openTrainingDrawer")}
